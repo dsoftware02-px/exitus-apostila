@@ -8,156 +8,6 @@ interface LiveA4PageProps {
   sessionTitle?: string;
 }
 
-const LEGACY_EDITOR_CSS = `
-.pagedjs_page_content {
-  font-family: 'Georgia', 'Times New Roman', serif;
-  font-size: 12pt;
-  line-height: 1.7;
-  color: #1a1a1a;
-}
-
-.pagedjs_page_content h1 {
-  font-size: 24pt;
-  font-weight: 700;
-  margin-bottom: 16px;
-  color: #111;
-}
-
-.pagedjs_page_content h2 {
-  font-size: 20pt;
-  font-weight: 700;
-  margin-bottom: 12px;
-  color: #222;
-}
-
-.pagedjs_page_content h3 {
-  font-size: 16pt;
-  font-weight: 600;
-  margin-bottom: 10px;
-  color: #333;
-}
-
-.pagedjs_page_content h4 {
-  font-size: 13pt;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #444;
-}
-
-.pagedjs_page_content p {
-  margin-bottom: 10px;
-  text-align: justify;
-}
-
-.pagedjs_page_content ul,
-.pagedjs_page_content ol {
-  margin-bottom: 10px;
-  padding-left: 24px;
-}
-
-.pagedjs_page_content li {
-  margin-bottom: 4px;
-}
-
-.pagedjs_page_content img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-}
-
-.pagedjs_page_content img:not([style*="float"]) {
-  margin: 12px 0;
-}
-
-.pagedjs_page_content img[style*="float: left"] {
-  margin: 0 12px 8px 0 !important;
-}
-
-.pagedjs_page_content img[style*="float: right"] {
-  margin: 0 0 8px 12px !important;
-}
-
-.pagedjs_page_content img[style*="margin-left: auto"][style*="margin-right: auto"] {
-  display: block;
-  margin: 12px auto !important;
-}
-
-.pagedjs_page_content blockquote {
-  border-left: 4px solid #d4d4d8;
-  padding-left: 16px;
-  margin: 12px 0;
-  color: #52525b;
-  font-style: italic;
-}
-
-.pagedjs_page_content hr {
-  border: none;
-  border-top: 1px solid #e4e4e7;
-  margin: 20px 0;
-}
-
-.pagedjs_page_content table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 12px 0;
-}
-
-.pagedjs_page_content th,
-.pagedjs_page_content td {
-  border: 1px solid #d4d4d8;
-  padding: 8px 12px;
-  text-align: left;
-  font-size: 10pt;
-}
-
-.pagedjs_page_content th {
-  background: #f4f4f5;
-  font-weight: 600;
-}
-
-.pagedjs_page_content strong {
-  font-weight: 700;
-}
-
-.pagedjs_page_content em {
-  font-style: italic;
-}
-
-.pagedjs_page_content code {
-  background: #f4f4f5;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10pt;
-  font-family: 'Fira Code', monospace;
-}
-
-.pagedjs_page_content pre {
-  background: #18181b;
-  color: #e4e4e7;
-  padding: 16px;
-  border-radius: 8px;
-  overflow-x: auto;
-  font-size: 10pt;
-  margin: 12px 0;
-}
-
-.pagedjs_page_content pre code {
-  background: none;
-  padding: 0;
-  color: inherit;
-}
-
-.pagedjs_page_content .img-caption {
-  text-align: center;
-  font-size: 9pt;
-  color: #71717a;
-  font-style: italic;
-  margin-top: -8px;
-  margin-bottom: 12px;
-}
-`;
-
 const TEMPLATE_EDITOR_CSS = `
 .pagedjs_page_content {
   font-size: 11pt;
@@ -168,136 +18,10 @@ const TEMPLATE_EDITOR_CSS = `
 }
 `;
 
-const KATEX_PREVIEW_CSS = `
-.pagedjs_page_content .katex {
-  font-size: 1.02em;
-}
-
-.pagedjs_page_content .katex-display {
-  margin: 0.85em 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-`;
-
-const LAYOUT_BLOCKS_CSS = `
-/* ============================================
-   Layout Blocks - Paged Preview Styles
-   ============================================ */
-
-/* Column Layout */
-.pagedjs_page_content .column-layout {
-  display: grid;
-  gap: 6mm;
-  margin: 4mm 0;
-}
-
-.pagedjs_page_content .column-layout.cols-2 {
-  grid-template-columns: 1fr 1fr;
-}
-
-.pagedjs_page_content .column-layout.cols-3 {
-  grid-template-columns: 1fr 1fr 1fr;
-}
-
-.pagedjs_page_content .column-layout.cols-4 {
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-}
-
-.pagedjs_page_content .column-item {
-  min-height: 10mm;
-}
-
-/* Callout Box */
-.pagedjs_page_content .callout-box {
-  border-radius: 8px;
-  padding: 4mm 5mm;
-  margin: 4mm 0;
-  border-left: 4px solid;
-  page-break-inside: avoid;
-}
-
-.pagedjs_page_content .callout-box::before {
-  font-size: 11pt;
-  font-weight: 700;
-  display: block;
-  margin-bottom: 2mm;
-}
-
-.pagedjs_page_content .callout-info {
-  background: #eff6ff;
-  border-left-color: #3b82f6;
-}
-
-.pagedjs_page_content .callout-info::before {
-  content: "ℹ️ Informação";
-  color: #1d4ed8;
-}
-
-.pagedjs_page_content .callout-tip {
-  background: #f0fdf4;
-  border-left-color: #22c55e;
-}
-
-.pagedjs_page_content .callout-tip::before {
-  content: "💡 Dica";
-  color: #16a34a;
-}
-
-.pagedjs_page_content .callout-warning {
-  background: #fffbeb;
-  border-left-color: #f59e0b;
-}
-
-.pagedjs_page_content .callout-warning::before {
-  content: "⚠️ Atenção";
-  color: #d97706;
-}
-
-.pagedjs_page_content .callout-example {
-  background: #faf5ff;
-  border-left-color: #a855f7;
-}
-
-.pagedjs_page_content .callout-example::before {
-  content: "📝 Exemplo";
-  color: #9333ea;
-}
-
-/* Page Break */
-.pagedjs_page_content [data-type="page-break"] {
-  break-after: page;
-  page-break-after: always;
-  height: 0;
-  margin: 0;
-  padding: 0;
-  border: none;
-}
-
-/* Spacer Block */
-.pagedjs_page_content .spacer-block,
-.pagedjs_page_content [data-type="spacer-block"] {
-  display: block;
-  border: none;
-  background: none;
-}
-
-/* Text Alignment */
-.pagedjs_page_content [style*="text-align: center"],
-.pagedjs_page_content .text-center {
-  text-align: center;
-}
-
-.pagedjs_page_content [style*="text-align: right"],
-.pagedjs_page_content .text-right {
-  text-align: right;
-}
-
-.pagedjs_page_content [style*="text-align: justify"],
-.pagedjs_page_content .text-justify {
-  text-align: justify;
-}
-`;
+import editorStylesRaw from '../index.css?raw';
+const IMPORTED_EDITOR_STYLES = editorStylesRaw
+  .replace(/@import\s+["'][^"']+["'];?/g, '')
+  .trim();
 
 function getPagedCss(useTemplateLayout: boolean): string {
   const m = STANDARD_MARGINS;
@@ -322,8 +46,8 @@ body {
 }
 
 .pagedjs_pages {
-  display: flex;
-  flex-direction: column;
+  display: flex !important;
+  flex-direction: column !important;
   align-items: center;
   padding: 32px 0;
 }
@@ -344,9 +68,8 @@ body {
   border: 1px solid ${useTemplateLayout ? '#f2a65a' : '#d4d4d8'};
 }
 
-${useTemplateLayout ? TEMPLATE_EDITOR_CSS : LEGACY_EDITOR_CSS}
-${KATEX_PREVIEW_CSS}
-${LAYOUT_BLOCKS_CSS}
+${useTemplateLayout ? TEMPLATE_EDITOR_CSS : ''}
+${IMPORTED_EDITOR_STYLES}
 `;
 }
 
@@ -633,6 +356,9 @@ export function LiveA4Page({ content, layoutId, sessionTitle }: LiveA4PageProps)
 
         const blocks = extractLayoutBlocks(normalizedContent, sessionTitle);
         composedHtml = applyLayoutTemplate(layoutTemplate, blocks);
+      } else {
+        // Envolver o HTML para herdar as mesmas classes nativas do editor em index.css
+        composedHtml = `<div class="pagedjs_textarea_mimic">${composedHtml}</div>`;
       }
 
       const pagedCss = getPagedCss(useTemplateLayout);

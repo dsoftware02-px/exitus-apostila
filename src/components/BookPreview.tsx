@@ -1,11 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Book } from '../types';
+import { renderLatexInHtml } from '../lib/latex';
 import { ArrowLeft, Printer, Loader2 } from 'lucide-react';
+import editorStylesRaw from '../index.css?raw';
 
 interface BookPreviewProps {
   book: Book;
   onBack: () => void;
 }
+
+const PRINT_STYLE_ID = 'book-preview-print-style';
+
+const IMPORTED_EDITOR_STYLES = editorStylesRaw
+  .replace(/@import\s+["'][^"']+["'];?/g, '')
+  .trim();
 
 const BOOK_PAGED_CSS = `
 @page {
@@ -16,15 +24,16 @@ const BOOK_PAGED_CSS = `
 .pagedjs_page {
   background: white;
   box-shadow: 0 4px 24px rgba(0,0,0,0.12);
-  margin-bottom: 32px;
+  margin: 0 !important;
   border-radius: 2px;
 }
 
 .pagedjs_pages {
-  display: flex;
-  flex-direction: column;
+  display: flex !important;
+  flex-direction: column !important;
   align-items: center;
-  padding: 32px 0;
+  gap: 28px;
+  padding: 32px 0 48px;
 }
 
 /* Capa */
@@ -239,6 +248,22 @@ const BOOK_PAGED_CSS = `
   margin: 12px 0;
 }
 
+.session-content [data-type="page-break"] {
+  break-after: page;
+  page-break-after: always;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.session-content .spacer-block,
+.session-content [data-type="spacer-block"] {
+  display: block;
+  border: none;
+  background: none;
+}
+
 .session-pending {
   background: #fafafa;
   border: 1px dashed #d4d4d8;
@@ -257,20 +282,188 @@ const BOOK_PAGED_CSS = `
 }
 `;
 
+function styleStringToObject(style: string): Record<string, string> {
+  return style
+    .split(';')
+    .map(part => part.trim())
+    .filter(Boolean)
+    .reduce<Record<string, string>>((accumulator, part) => {
+      const [property, ...valueParts] = part.split(':');
+      if (!property || valueParts.length === 0) return accumulator;
+      accumulator[property.trim().toLowerCase()] = valueParts.join(':').trim();
+      return accumulator;
+    }, {});
+}
+
+function styleObjectToString(styleObject: Record<string, string>): string {
+  return Object.entries(styleObject)
+    .filter(([, value]) => value && value.trim().length > 0)
+    .map(([property, value]) => `${property}: ${value}`)
+    .join('; ');
+}
+
+function mergeInlineStyles(baseStyle: string, overrideStyle: string): string {
+  const merged = {
+    ...styleStringToObject(baseStyle),
+    ...styleStringToObject(overrideStyle)
+  };
+  return styleObjectToString(merged);
+}
+
+function normalizeEditorHtml(content: string): string {
+  const parser = new DOMParser();
+  const document = parser.parseFromString(`<div id="normalize-root">${content}</div>`, 'text/html');
+  const root = document.getElementById('normalize-root');
+
+  if (!root) return renderLatexInHtml(content);
+
+  root.querySelectorAll('img').forEach((imageElement) => {
+    const containerStyle = imageElement.getAttribute('containerstyle') || imageElement.getAttribute('containerStyle') || '';
+    const inlineStyle = imageElement.getAttribute('style') || '';
+    const mergedStyle = mergeInlineStyles(containerStyle, inlineStyle);
+
+    if (mergedStyle) {
+      imageElement.setAttribute('style', mergedStyle);
+    }
+
+    imageElement.removeAttribute('containerstyle');
+    imageElement.removeAttribute('containerStyle');
+    imageElement.removeAttribute('wrapperstyle');
+    imageElement.removeAttribute('wrapperStyle');
+
+    const widthAttribute = imageElement.getAttribute('width');
+    if (widthAttribute && !styleStringToObject(imageElement.getAttribute('style') || '').width) {
+      const normalizedWidth = /^\d+$/.test(widthAttribute) ? `${widthAttribute}px` : widthAttribute;
+      const mergedWithWidth = mergeInlineStyles(imageElement.getAttribute('style') || '', `width: ${normalizedWidth}; height: auto;`);
+      imageElement.setAttribute('style', mergedWithWidth);
+    }
+  });
+
+  return renderLatexInHtml(root.innerHTML);
+}
+
 export function BookPreview({ book, onBack }: BookPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isRendering, setIsRendering] = useState(true);
+  const renderVersionRef = useRef(0);
+
+  const handlePrintPdf = () => {
+    if (!containerRef.current) return;
+
+    const existingPrintStyle = document.getElementById(PRINT_STYLE_ID);
+    if (existingPrintStyle) {
+      existingPrintStyle.remove();
+    }
+
+    // Adicionar classe aos elementos pais para corrigir o overflow no momento da impressão
+    const parents: HTMLElement[] = [];
+    let current: HTMLElement | null = containerRef.current.parentElement;
+    while (current && current !== document.body) {
+      current.classList.add('print-parent');
+      parents.push(current);
+      current = current.parentElement;
+    }
+
+    const printStyle = document.createElement('style');
+    printStyle.id = PRINT_STYLE_ID;
+    printStyle.textContent = `
+      @media print {
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #ffffff !important;
+          height: auto !important;
+          min-height: auto !important;
+          max-height: none !important;
+          overflow: visible !important;
+        }
+
+        body > *:not(.print-parent) {
+          display: none !important;
+        }
+
+        .print-parent {
+          display: block !important;
+          position: static !important;
+          height: auto !important;
+          min-height: auto !important;
+          max-height: none !important;
+          overflow: visible !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border: none !important;
+          transform: none !important;
+          background: transparent !important;
+        }
+
+        .print-parent > *:not(.print-parent):not(#book-preview-print-root) {
+          display: none !important;
+        }
+
+        #book-preview-print-root {
+          display: block !important;
+          position: static !important;
+          width: 100% !important;
+          overflow: visible !important;
+          background: #ffffff !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        #book-preview-print-root .pagedjs_pages {
+          padding: 0 !important;
+          gap: 0 !important;
+          display: block !important;
+        }
+
+        #book-preview-print-root .pagedjs_page {
+          box-shadow: none !important;
+          margin: 0 auto !important;
+          break-after: page;
+          page-break-after: always;
+        }
+      }
+    `;
+
+    document.head.appendChild(printStyle);
+
+    const cleanupPrintStyle = () => {
+      const styleNode = document.getElementById(PRINT_STYLE_ID);
+      if (styleNode) {
+        styleNode.remove();
+      }
+      parents.forEach(el => el.classList.remove('print-parent'));
+    };
+
+    window.addEventListener('afterprint', cleanupPrintStyle, { once: true });
+
+    window.print();
+
+    // Timeout de segurança caso o afterprint não dispare (ex: cancelamento em alguns navegadores antigos)
+    setTimeout(cleanupPrintStyle, 5000);
+  };
 
   useEffect(() => {
-    renderBook();
+    const renderVersion = ++renderVersionRef.current;
+    let isCancelled = false;
+
+    void renderBook(renderVersion, () => isCancelled || renderVersion !== renderVersionRef.current);
+
+    return () => {
+      isCancelled = true;
+    };
   }, [book]);
 
-  const renderBook = async () => {
+  const renderBook = async (renderVersion: number, shouldAbort: () => boolean) => {
     if (!containerRef.current) return;
     setIsRendering(true);
 
     try {
       const { Previewer } = await import('pagedjs');
+
+      if (shouldAbort() || !containerRef.current?.isConnected) {
+        return;
+      }
 
       // Montar o HTML completo do livro
       let bookHtml = '';
@@ -325,7 +518,7 @@ export function BookPreview({ book, onBack }: BookPreviewProps) {
             bookHtml += `<h3><span class="session-number">${cIdx + 1}.${sIdx + 1}</span> ${session.title}</h3>`;
 
             if (session.content) {
-              bookHtml += `<div class="session-content">${session.content}</div>`;
+              bookHtml += `<div class="session-content pagedjs_textarea_mimic">${normalizeEditorHtml(session.content)}</div>`;
             } else {
               bookHtml += `<div class="session-pending">Conteúdo pendente para esta sessão.</div>`;
             }
@@ -339,16 +532,31 @@ export function BookPreview({ book, onBack }: BookPreviewProps) {
 
       // Limpar e renderizar
       containerRef.current.innerHTML = '';
+
+      if (shouldAbort() || !containerRef.current?.isConnected) {
+        return;
+      }
+
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+      if (shouldAbort() || !containerRef.current?.isConnected) {
+        return;
+      }
+
       const previewer = new Previewer();
       await previewer.preview(
         bookHtml,
-        [{ text: BOOK_PAGED_CSS }] as any,
+        [{ text: `${BOOK_PAGED_CSS}\n${IMPORTED_EDITOR_STYLES}` }] as any,
         containerRef.current
       );
     } catch (err) {
-      console.error('Erro ao renderizar BookPreview:', err);
+      if (!shouldAbort()) {
+        console.error('Erro ao renderizar BookPreview:', err);
+      }
     } finally {
-      setIsRendering(false);
+      if (!shouldAbort() && renderVersion === renderVersionRef.current) {
+        setIsRendering(false);
+      }
     }
   };
 
@@ -369,8 +577,9 @@ export function BookPreview({ book, onBack }: BookPreviewProps) {
           </div>
         </div>
         <button
-          onClick={() => window.print()}
-          className="flex items-center bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
+          onClick={handlePrintPdf}
+          disabled={isRendering}
+          className="flex items-center bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Printer className="w-4 h-4 mr-2" />
           Imprimir / PDF
@@ -387,7 +596,7 @@ export function BookPreview({ book, onBack }: BookPreviewProps) {
             </div>
           </div>
         )}
-        <div ref={containerRef} className="w-full" />
+        <div id="book-preview-print-root" ref={containerRef} className="w-full" />
       </div>
     </div>
   );
