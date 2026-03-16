@@ -1,110 +1,361 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Book } from '../types';
-import ReactMarkdown from 'react-markdown';
-import { ArrowLeft, Printer, RefreshCw } from 'lucide-react';
-import { Previewer } from 'pagedjs';
-import '../index.css';
+import { ArrowLeft, Printer, Loader2 } from 'lucide-react';
 
 interface BookPreviewProps {
   book: Book;
   onBack: () => void;
 }
 
+const BOOK_PAGED_CSS = `
+@page {
+  size: A4;
+  margin: 20mm;
+}
+
+.pagedjs_page {
+  background: white;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  margin-bottom: 32px;
+  border-radius: 2px;
+}
+
+.pagedjs_pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 0;
+}
+
+/* Capa */
+.book-cover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  text-align: center;
+  break-after: page;
+}
+
+.book-cover h3 {
+  font-size: 18pt;
+  font-weight: 500;
+  color: #71717a;
+  margin-bottom: 16px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+.book-cover h1 {
+  font-size: 36pt;
+  font-weight: 700;
+  color: #18181b;
+  margin-bottom: 24px;
+}
+
+.book-cover .divider {
+  width: 80px;
+  height: 4px;
+  background: #18181b;
+  margin: 0 auto 24px;
+}
+
+.book-cover p {
+  font-size: 14pt;
+  color: #52525b;
+  max-width: 400px;
+}
+
+/* Índice */
+.book-toc {
+  break-after: page;
+}
+
+.book-toc h2 {
+  font-size: 24pt;
+  font-weight: 700;
+  color: #18181b;
+  margin-bottom: 32px;
+  border-bottom: 2px solid #18181b;
+  padding-bottom: 12px;
+}
+
+.toc-part {
+  margin-bottom: 20px;
+}
+
+.toc-part h3 {
+  font-size: 14pt;
+  font-weight: 700;
+  color: #27272a;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+
+.toc-chapter {
+  margin-bottom: 8px;
+  padding-left: 16px;
+}
+
+.toc-chapter-title {
+  font-size: 12pt;
+  font-weight: 500;
+  color: #3f3f46;
+}
+
+.toc-session {
+  padding-left: 32px;
+  font-size: 10pt;
+  color: #71717a;
+  margin-bottom: 4px;
+}
+
+/* Divisor de Parte */
+.part-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  text-align: center;
+  background: #18181b;
+  color: white;
+  margin: -20mm;
+  padding: 20mm;
+  break-after: page;
+}
+
+.part-divider span {
+  font-size: 14pt;
+  color: #a1a1aa;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.part-divider h1 {
+  font-size: 30pt;
+  font-weight: 700;
+  color: white;
+}
+
+/* Conteúdo do capítulo */
+.chapter-block {
+  break-after: page;
+}
+
+.chapter-header {
+  margin-bottom: 32px;
+  border-bottom: 4px solid #18181b;
+  padding-bottom: 16px;
+}
+
+.chapter-header .label {
+  font-size: 10pt;
+  color: #71717a;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.chapter-header h2 {
+  font-size: 24pt;
+  font-weight: 700;
+  color: #18181b;
+  margin-top: 8px;
+}
+
+.chapter-header p {
+  color: #52525b;
+  font-style: italic;
+  margin-top: 12px;
+  font-size: 11pt;
+}
+
+.session-block {
+  margin-bottom: 32px;
+}
+
+.session-block h3 {
+  font-size: 16pt;
+  font-weight: 700;
+  color: #27272a;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.session-number {
+  background: #18181b;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10pt;
+  flex-shrink: 0;
+}
+
+.session-content {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 11pt;
+  line-height: 1.7;
+  color: #1a1a1a;
+  text-align: justify;
+}
+
+.session-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+.session-content h1, .session-content h2, .session-content h3, .session-content h4 {
+  font-weight: 600;
+  margin: 16px 0 8px;
+  color: #18181b;
+}
+
+.session-content p {
+  margin-bottom: 8px;
+}
+
+.session-content ul, .session-content ol {
+  padding-left: 24px;
+  margin-bottom: 8px;
+}
+
+.session-content blockquote {
+  border-left: 3px solid #d4d4d8;
+  padding-left: 12px;
+  color: #52525b;
+  font-style: italic;
+  margin: 12px 0;
+}
+
+.session-pending {
+  background: #fafafa;
+  border: 1px dashed #d4d4d8;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  color: #a1a1aa;
+  font-size: 10pt;
+}
+
+@media print {
+  .pagedjs_page {
+    box-shadow: none !important;
+    margin-bottom: 0 !important;
+  }
+}
+`;
+
 export function BookPreview({ book, onBack }: BookPreviewProps) {
-  const contentRef = useRef<HTMLDivElement>(null);
-  const pagedjsContainerRef = useRef<HTMLDivElement>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [pagedReady, setPagedReady] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isRendering, setIsRendering] = useState(true);
 
   useEffect(() => {
-    generatePdfPreview();
-    
-    // Clean up
-    return () => {
-      if (pagedjsContainerRef.current) {
-        pagedjsContainerRef.current.innerHTML = '';
-      }
-    };
-  }, []);
+    renderBook();
+  }, [book]);
 
-  const generatePdfPreview = async () => {
-    if (!contentRef.current || !pagedjsContainerRef.current) return;
-    
-    setIsGenerating(true);
-    setPagedReady(false);
-    
+  const renderBook = async () => {
+    if (!containerRef.current) return;
+    setIsRendering(true);
+
     try {
-      // Clear previous preview
-      pagedjsContainerRef.current.innerHTML = '';
-      
-      const previewer = new Previewer();
-      
-      // Inject required CSS for PagedJS into head just for this preview
-      const style = document.createElement('style');
-      style.id = 'pagedjs-styles';
-      style.textContent = `
-        @media print {
-          @page {
-            size: A4;
-            margin: 2cm;
-            
-            @bottom-center {
-              content: counter(page);
-              font-size: 10pt;
-              color: #666;
-            }
-          }
-          
-          /* Force page break after cover and TOC */
-          .page-break-after {
-            break-after: page;
-          }
-          
-          /* Prevent breaks inside sections if possible */
-          .break-inside-avoid {
-            break-inside: avoid;
-          }
-        }
-        
-        /* PagedJS specific screen styles to show pages nicely */
-        .pagedjs_pages {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 2rem;
-          padding: 2rem 0;
-          background-color: #e4e4e7; /* bg-zinc-200 */
-        }
-        
-        .pagedjs_page {
-          background: white;
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-          margin-bottom: 2rem;
-        }
+      const { Previewer } = await import('pagedjs');
+
+      // Montar o HTML completo do livro
+      let bookHtml = '';
+
+      // Capa
+      bookHtml += `
+        <div class="book-cover">
+          <h3>${book.metadata.discipline.subject}</h3>
+          <h1>${book.metadata.discipline.grade}</h1>
+          <div class="divider"></div>
+          <p>Material Didático Focado em ${book.metadata.course.rigorLevel}</p>
+        </div>
       `;
-      
-      if (!document.getElementById('pagedjs-styles')) {
-        document.head.appendChild(style);
-      }
-      
-      // Render PagedJS
-      await previewer.preview(contentRef.current, [], pagedjsContainerRef.current);
-      setPagedReady(true);
-    } catch (error) {
-      console.error('Error generating PagedJS preview:', error);
+
+      // Índice
+      bookHtml += `<div class="book-toc"><h2>Índice</h2>`;
+      book.parts.forEach((part, pIdx) => {
+        bookHtml += `<div class="toc-part">`;
+        bookHtml += `<h3>${book.metadata.style.structureLevel1} ${pIdx + 1}: ${part.title}</h3>`;
+        part.chapters.forEach((chapter, cIdx) => {
+          bookHtml += `<div class="toc-chapter"><span class="toc-chapter-title">${book.metadata.style.structureLevel2} ${cIdx + 1}: ${chapter.title}</span></div>`;
+          chapter.sessions.forEach((session, sIdx) => {
+            bookHtml += `<div class="toc-session">${cIdx + 1}.${sIdx + 1} ${session.title}</div>`;
+          });
+        });
+        bookHtml += `</div>`;
+      });
+      bookHtml += `</div>`;
+
+      // Conteúdo
+      book.parts.forEach((part, pIdx) => {
+        // Divisor de parte
+        bookHtml += `
+          <div class="part-divider">
+            <span>${book.metadata.style.structureLevel1} ${pIdx + 1}</span>
+            <h1>${part.title}</h1>
+          </div>
+        `;
+
+        part.chapters.forEach((chapter, cIdx) => {
+          bookHtml += `<div class="chapter-block">`;
+          bookHtml += `
+            <div class="chapter-header">
+              <span class="label">${book.metadata.style.structureLevel2} ${cIdx + 1}</span>
+              <h2>${chapter.title}</h2>
+              <p>${chapter.objective}</p>
+            </div>
+          `;
+
+          chapter.sessions.forEach((session, sIdx) => {
+            bookHtml += `<div class="session-block">`;
+            bookHtml += `<h3><span class="session-number">${cIdx + 1}.${sIdx + 1}</span> ${session.title}</h3>`;
+
+            if (session.content) {
+              bookHtml += `<div class="session-content">${session.content}</div>`;
+            } else {
+              bookHtml += `<div class="session-pending">Conteúdo pendente para esta sessão.</div>`;
+            }
+
+            bookHtml += `</div>`;
+          });
+
+          bookHtml += `</div>`;
+        });
+      });
+
+      // Limpar e renderizar
+      containerRef.current.innerHTML = '';
+      const previewer = new Previewer();
+      await previewer.preview(
+        bookHtml,
+        [{ text: BOOK_PAGED_CSS }] as any,
+        containerRef.current
+      );
+    } catch (err) {
+      console.error('Erro ao renderizar BookPreview:', err);
     } finally {
-      setIsGenerating(false);
+      setIsRendering(false);
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
-    <div className="h-full overflow-y-auto bg-zinc-200 flex flex-col relative">
+    <div className="h-full overflow-y-auto bg-zinc-200 flex flex-col">
       {/* Top Bar */}
-      <div className="bg-white border-b border-zinc-300 px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm print:hidden">
+      <div className="bg-white border-b border-zinc-300 px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center">
           <button
             onClick={onBack}
@@ -113,146 +364,30 @@ export function BookPreview({ book, onBack }: BookPreviewProps) {
             <ArrowLeft className="w-5 h-5 text-zinc-600" />
           </button>
           <div>
-            <h1 className="font-semibold text-zinc-900">Visualização de Impressão (Paged.js)</h1>
+            <h1 className="font-semibold text-zinc-900">Visualização de Impressão</h1>
             <p className="text-xs text-zinc-500">{book.metadata.discipline.subject} • {book.metadata.discipline.grade}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={generatePdfPreview}
-            disabled={isGenerating}
-            className="flex items-center bg-white border border-zinc-300 text-zinc-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
-            Atualizar
-          </button>
-          <button
-            onClick={handlePrint}
-            disabled={!pagedReady}
-            className="flex items-center bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50"
-          >
-            <Printer className="w-4 h-4 mr-2" />
-            Imprimir / PDF
-          </button>
-        </div>
+        <button
+          onClick={() => window.print()}
+          className="flex items-center bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
+        >
+          <Printer className="w-4 h-4 mr-2" />
+          Imprimir / PDF
+        </button>
       </div>
 
-      {isGenerating && (
-        <div className="absolute inset-0 bg-zinc-200/80 backdrop-blur-sm z-40 flex items-center justify-center print:hidden">
-          <div className="bg-white p-6 rounded-xl shadow-lg flex flex-col items-center">
-            <RefreshCw className="w-8 h-8 text-zinc-900 animate-spin mb-4" />
-            <p className="font-medium text-zinc-900">Paginando o livro...</p>
-            <p className="text-sm text-zinc-500 mt-1">Isso pode levar alguns segundos dependendo do tamanho.</p>
-          </div>
-        </div>
-      )}
-
-      {/* Container for PagedJS output */}
-      <div 
-        ref={pagedjsContainerRef} 
-        className="flex-1 overflow-y-auto w-full"
-      ></div>
-
-      {/* Hidden Source Content for PagedJS */}
-      <div style={{ display: 'none' }}>
-        <div ref={contentRef} className="book-source-content">
-          
-          {/* Capa */}
-          <div className="page-break-after" style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: '10%' }}>
-            <h3 style={{ fontSize: '24pt', color: '#71717a', marginBottom: '2rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-              {book.metadata.discipline.subject}
-            </h3>
-            <h1 style={{ fontSize: '48pt', fontWeight: 'bold', color: '#18181b', marginBottom: '4rem' }}>
-              {book.metadata.discipline.grade}
-            </h1>
-            <div style={{ width: '100px', height: '4px', backgroundColor: '#18181b', margin: '0 auto 4rem auto' }}></div>
-            <p style={{ fontSize: '18pt', color: '#52525b', maxWidth: '80%' }}>
-              Material Didático Focado em {book.metadata.course.rigorLevel}
-            </p>
-          </div>
-
-          {/* Índice */}
-          <div className="page-break-after">
-            <h2 style={{ fontSize: '32pt', fontWeight: 'bold', borderBottom: '2px solid #18181b', paddingBottom: '1rem', marginBottom: '3rem' }}>
-              Índice
-            </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-              {book.parts.map((part, pIdx) => (
-                <div key={part.id}>
-                  <h3 style={{ fontSize: '18pt', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '1rem' }}>
-                    {book.metadata.style.structureLevel1} {pIdx + 1}: {part.title}
-                  </h3>
-                  <div style={{ paddingLeft: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {part.chapters.map((chapter, cIdx) => (
-                      <div key={chapter.id}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', fontWeight: '500' }}>
-                          <span>{book.metadata.style.structureLevel2} {cIdx + 1}: {chapter.title}</span>
-                          <span style={{ borderBottom: '1px dotted #d4d4d8', flex: 1, margin: '0 1rem' }}></span>
-                        </div>
-                        <div style={{ paddingLeft: '1.5rem', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          {chapter.sessions.map((session, sIdx) => (
-                            <div key={session.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', fontSize: '11pt', color: '#52525b' }}>
-                              <span>{cIdx + 1}.{sIdx + 1} {session.title}</span>
-                              <span style={{ borderBottom: '1px dotted #e4e4e7', flex: 1, margin: '0 1rem' }}></span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+      {/* Pages Container with paged.js */}
+      <div className="flex-1 overflow-y-auto relative">
+        {isRendering && (
+          <div className="absolute inset-0 flex items-center justify-center bg-zinc-200/80 z-10">
+            <div className="flex items-center bg-white px-6 py-3 rounded-xl shadow-lg text-zinc-600">
+              <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+              Renderizando páginas...
             </div>
           </div>
-
-          {/* Conteúdo */}
-          {book.parts.map((part, pIdx) => (
-            <React.Fragment key={part.id}>
-              {/* Divisor de Parte */}
-              <div className="page-break-after" style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#18181b', color: 'white', padding: '10%', textAlign: 'center' }}>
-                <span style={{ color: '#a1a1aa', fontSize: '16pt', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1.5rem' }}>
-                  {book.metadata.style.structureLevel1} {pIdx + 1}
-                </span>
-                <h1 style={{ fontSize: '40pt', fontWeight: 'bold' }}>{part.title}</h1>
-              </div>
-
-              {part.chapters.map((chapter, cIdx) => (
-                <div key={chapter.id} className="page-break-after">
-                  <header style={{ marginBottom: '3rem', borderBottom: '4px solid #18181b', paddingBottom: '1.5rem' }}>
-                    <span style={{ color: '#71717a', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '12pt' }}>
-                      {book.metadata.style.structureLevel2} {cIdx + 1}
-                    </span>
-                    <h2 style={{ fontSize: '32pt', fontWeight: 'bold', marginTop: '0.5rem', color: '#18181b' }}>{chapter.title}</h2>
-                    <p style={{ color: '#52525b', marginTop: '1rem', fontStyle: 'italic' }}>{chapter.objective}</p>
-                  </header>
-
-                  <div style={{ columnCount: 2, columnGap: '3rem', textAlign: 'justify' }}>
-                    {chapter.sessions.map((session, sIdx) => (
-                      <div key={session.id} className="break-inside-avoid" style={{ marginBottom: '3rem' }}>
-                        <h3 style={{ fontSize: '18pt', fontWeight: 'bold', color: '#27272a', marginBottom: '1rem', display: 'flex', alignItems: 'center' }}>
-                          <span style={{ backgroundColor: '#18181b', color: 'white', width: '2rem', height: '2rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontSize: '12pt', marginRight: '0.75rem', flexShrink: 0 }}>
-                            {cIdx + 1}.{sIdx + 1}
-                          </span>
-                          {session.title}
-                        </h3>
-                        
-                        {session.content ? (
-                          <div className="prose prose-sm prose-zinc max-w-none" style={{ fontSize: '11pt', lineHeight: 1.6 }}>
-                            <ReactMarkdown>{session.content}</ReactMarkdown>
-                          </div>
-                        ) : (
-                          <div style={{ backgroundColor: '#fafafa', border: '1px dashed #d4d4d8', borderRadius: '0.5rem', padding: '1.5rem', textAlign: 'center', color: '#a1a1aa', fontSize: '10pt' }}>
-                            Conteúdo pendente para esta sessão.
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </React.Fragment>
-          ))}
-        </div>
+        )}
+        <div ref={containerRef} className="w-full" />
       </div>
     </div>
   );

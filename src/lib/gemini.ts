@@ -17,7 +17,7 @@ function getAI() {
 
 export async function generateMacroStructure(metadata: BookMetadata): Promise<Part[]> {
   const ai = getAI();
-  
+
   const prompt = `
     Atue como um Engenheiro Pedagógico Especialista com formação em Ivy League.
     Crie uma estrutura de livro didático (Índice / Espinha de Peixe) com base nas Quatro Causas Pedagógicas:
@@ -126,7 +126,7 @@ export async function generateMacroStructure(metadata: BookMetadata): Promise<Pa
 
 export async function refineMacroStructure(currentParts: Part[], metadata: BookMetadata, userPrompt: string): Promise<Part[]> {
   const ai = getAI();
-  
+
   const prompt = `
     Atue como um Engenheiro Pedagógico Especialista.
     Aqui está a estrutura atual do livro didático (em JSON):
@@ -191,7 +191,7 @@ export async function refineMacroStructure(currentParts: Part[], metadata: BookM
 
   try {
     const parts = JSON.parse(response.text || '[]');
-    
+
     // Helper to find existing item to preserve content
     const findExisting = (arr: any[], id: string) => arr.find((item: any) => item.id === id) || {};
 
@@ -245,7 +245,7 @@ export async function suggestMetadataField(field: string, metadata: BookMetadata
     : `Sua tarefa é CRIAR um novo texto. ${userPrompt ? `Siga esta diretriz específica do usuário: "${userPrompt}"` : ''}`;
 
   let prompt = '';
-  switch(field) {
+  switch (field) {
     case 'pedagogicalEthos':
       prompt = `Atue como um especialista em filosofia da educação.\nCom base no contexto abaixo, escreva/aprimore o "Ethos Pedagógico" (a alma da escola, seus valores fundamentais e visão de mundo).\n\n${actionInstruction}\n\nContexto:\n${context}`;
       break;
@@ -312,7 +312,7 @@ export async function suggestApproach(objective: string, previousContent?: strin
 
 export async function generateSessionContent(payload: SlidingWindowPayload): Promise<{ content: string, summary: string }> {
   const ai = getAI();
-  
+
   const prompt = `
     Você é um co-piloto de autoria de livros didáticos. Escreva o conteúdo para a sessão atual.
     
@@ -336,8 +336,12 @@ export async function generateSessionContent(payload: SlidingWindowPayload): Pro
     Estilo de Imagens: ${payload.metadata.visual.imageStyle}
     
     Escreva o texto didático de forma clara, engajadora e alinhada à abordagem sugerida.
-    Se necessário, insira placeholders como <img_req desc="descrição da imagem"> ou <q_req desc="descrição do exercício">.
-    Retorne um JSON com o 'content' (o texto gerado em Markdown) e um 'summary' (um resumo de 2 frases do que foi abordado, para ser usado no contexto das próximas sessões).
+    **MUITO IMPORTANTE:** O texto gerado DEVE SER EM HTML VÁLIDO (usando <h1>, <h2>, <p>, <strong>, <ul>, etc). NÃO use Markdown.
+    Se necessário, insira placeholders exatamente como estas tags HTML customizadas (com um espaço antes de fechá-las caso necessário):
+    <img_req desc="descrição detalhada da imagem necessária"></img_req>
+    <q_req desc="descrição do exercício ou reflexão socrática"></q_req>
+    
+    Retorne um JSON com o 'content' (o texto gerado em HTML) e um 'summary' (um resumo de 2 frases do que foi abordado, para ser usado no contexto das próximas sessões).
   `;
 
   const response = await ai.models.generateContent({
@@ -348,7 +352,7 @@ export async function generateSessionContent(payload: SlidingWindowPayload): Pro
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          content: { type: Type.STRING, description: 'Texto didático em Markdown' },
+          content: { type: Type.STRING, description: 'Texto didático formatado em HTML' },
           summary: { type: Type.STRING, description: 'Resumo curto da sessão' }
         },
         required: ['content', 'summary']
@@ -363,9 +367,9 @@ export async function generateSessionContent(payload: SlidingWindowPayload): Pro
   }
 }
 
-export async function chatWithAssistant(messages: {role: string, content: string}[], metadata: BookMetadata, context?: string): Promise<string> {
+export async function chatWithAssistant(messages: { role: string, content: string }[], metadata: BookMetadata, context?: string): Promise<string> {
   const ai = getAI();
-  
+
   let systemInstruction = `
     Você é um Assistente Cognitivo Pedagógico Especialista (formação Ivy League).
     Seu objetivo é auxiliar o professor na autoria de um livro didático de alta qualidade.
@@ -380,7 +384,7 @@ export async function chatWithAssistant(messages: {role: string, content: string
     
     Ajude a debater conceitos, simplificar explicações, criar analogias ou sugerir atividades que respeitem este contexto.
   `;
-  
+
   if (context) {
     systemInstruction += `\n\nO professor selecionou o seguinte trecho do texto para discutir:\n"${context}"`;
   }
@@ -399,7 +403,7 @@ export async function chatWithAssistant(messages: {role: string, content: string
 
   const lastMessage = messages[messages.length - 1];
   const response = await chat.sendMessage({ message: lastMessage.content });
-  
+
   return response.text || '';
 }
 
@@ -427,7 +431,7 @@ export async function generateQuestion(context: string, difficulty: string): Pro
 
 export async function generateImage(context: string): Promise<string> {
   const ai = getAI();
-  
+
   // First, generate a good prompt for the image model based on the educational context
   const promptForImage = `
     Crie um prompt em inglês, curto e descritivo (máximo 2 frases), para gerar uma ilustração didática sobre o seguinte trecho:

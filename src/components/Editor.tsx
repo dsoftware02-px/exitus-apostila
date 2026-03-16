@@ -3,8 +3,9 @@ import { Session, Chapter, Book } from '../types';
 import { suggestApproach, generateSessionContent, generateQuestion, generateImage } from '../lib/gemini';
 import { buildSlidingWindowPayload } from '../lib/slidingWindow';
 import { Sparkles, Anchor, Play, CheckCircle2, Loader2, MessageSquarePlus, Image as ImageIcon, HelpCircle, Maximize2, X, Columns, FileText, Eye } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+
 import { LiveA4Page } from './LiveA4Page';
+import { RichEditor } from './RichEditor';
 
 type ViewMode = 'WRITE' | 'SPLIT' | 'PREVIEW';
 
@@ -42,7 +43,7 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
       if (sessionIndex > 0) {
         prevContent = chapter.sessions[sessionIndex - 1].content;
       }
-      
+
       const approach = await suggestApproach(session.objective, prevContent);
       onUpdateSession(chapter.id, session.id, { approach });
     } catch (e) {
@@ -56,15 +57,15 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
     if (!session || !chapter) return;
     setIsGenerating(true);
     onUpdateSession(chapter.id, session.id, { status: 'GENERATING' });
-    
+
     try {
       const sessionIndex = chapter.sessions.findIndex(s => s.id === session.id);
       const payload = buildSlidingWindowPayload(chapter, sessionIndex, book.metadata);
-      
+
       const { content, summary } = await generateSessionContent(payload);
-      
-      onUpdateSession(chapter.id, session.id, { 
-        content, 
+
+      onUpdateSession(chapter.id, session.id, {
+        content,
         summary,
         status: 'PENDING' // Still pending until user approves
       });
@@ -85,7 +86,7 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
   const handleMouseUp = (e: React.MouseEvent) => {
     const selection = window.getSelection();
     const text = selection?.toString().trim();
-    
+
     if (text && text.length > 10) {
       setSelectedText(text);
       setTooltipPos({ x: e.clientX, y: e.clientY - 40 });
@@ -105,7 +106,11 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
     setIsGeneratingAsset(true);
     try {
       const question = await generateQuestion(selectedText, book.metadata.course.rigorLevel);
-      const newContent = session.content + '\n\n---\n\n### Questão Proposta\n\n' + question;
+      // Converter markdown básico da questão para HTML
+      const questionHtml = question
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+      const newContent = session.content + `\n<hr>\n<h3>Questão Proposta</h3>\n<p>${questionHtml}</p>\n`;
       onUpdateSession(chapter.id, session.id, { content: newContent });
     } catch (e) {
       console.error(e);
@@ -123,7 +128,7 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
     try {
       const imageUrl = await generateImage(selectedText);
       if (imageUrl) {
-        const newContent = session.content + `\n\n![Ilustração Didática](${imageUrl})\n*Ilustração gerada por IA com base no texto: "${selectedText.substring(0, 50)}..."*\n\n`;
+        const newContent = session.content + `\n<figure style="text-align:center;margin:16px 0;">\n  <img src="${imageUrl}" alt="Ilustração Didática" style="max-width:100%;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.10);" />\n  <figcaption class="img-caption">Ilustração gerada por IA com base no texto: "${selectedText.substring(0, 50)}..."</figcaption>\n</figure>\n`;
         onUpdateSession(chapter.id, session.id, { content: newContent });
       } else {
         alert('Não foi possível gerar a imagem.');
@@ -202,12 +207,11 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
           <>
             {/* Markdown Editor */}
             {(viewMode === 'WRITE' || viewMode === 'SPLIT') && (
-              <div className={`h-full flex flex-col ${viewMode === 'SPLIT' ? 'w-1/2 border-r border-zinc-200' : 'w-full max-w-4xl mx-auto'}`}>
-                <textarea
-                  className="flex-1 w-full bg-transparent p-6 outline-none resize-none text-zinc-800 font-mono text-sm leading-relaxed"
-                  value={session.content}
-                  onChange={(e) => onUpdateSession(chapter.id, session.id, { content: e.target.value })}
-                  placeholder="Escreva o conteúdo da sessão aqui..."
+              <div className={`h-full flex flex-col ${viewMode === 'SPLIT' ? 'w-1/2 border-r border-zinc-200' : 'w-full mx-auto'}`}>
+                <RichEditor
+                  content={session.content}
+                  onChange={(html) => onUpdateSession(chapter.id, session.id, { content: html })}
+                  placeholder="Escreva o conteúdo da sessão aqui (HTML aceito)..."
                 />
               </div>
             )}
@@ -222,98 +226,98 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
         ) : (
           <div className="flex-1 overflow-y-auto p-6">
             <div className="max-w-2xl mx-auto space-y-8 mt-8">
-            {/* Step 1: Approach */}
-            <div className="bg-zinc-50 rounded-2xl p-6 border border-zinc-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-3">
-                    <Sparkles className="w-4 h-4" />
+              {/* Step 1: Approach */}
+              <div className="bg-zinc-50 rounded-2xl p-6 border border-zinc-200">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-3">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-medium text-zinc-900">Abordagem Pedagógica</h3>
                   </div>
-                  <h3 className="font-medium text-zinc-900">Abordagem Pedagógica</h3>
+                  <button
+                    onClick={handleSuggestApproach}
+                    disabled={isSuggesting || isGenerating}
+                    className="text-xs flex items-center text-blue-600 hover:text-blue-700 disabled:opacity-50 transition-colors font-medium"
+                  >
+                    {isSuggesting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                    {session.approach ? 'Regerar com IA' : 'Sugerir com IA'}
+                  </button>
                 </div>
-                <button
-                  onClick={handleSuggestApproach}
-                  disabled={isSuggesting || isGenerating}
-                  className="text-xs flex items-center text-blue-600 hover:text-blue-700 disabled:opacity-50 transition-colors font-medium"
-                >
-                  {isSuggesting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
-                  {session.approach ? 'Regerar com IA' : 'Sugerir com IA'}
-                </button>
+                {isSuggesting ? (
+                  <div className="flex items-center text-zinc-500 text-sm">
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analisando contexto e sugerindo abordagem...
+                  </div>
+                ) : (
+                  <div className="relative group">
+                    <textarea
+                      className="w-full bg-white border border-zinc-200 rounded-xl p-4 pr-12 text-sm text-zinc-700 outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
+                      rows={4}
+                      value={session.approach}
+                      onChange={(e) => onUpdateSession(chapter.id, session.id, { approach: e.target.value })}
+                      placeholder="Descreva como este tópico deve ser ensinado..."
+                    />
+                    <button
+                      onClick={() => setExpandedField('approach')}
+                      className="absolute top-3 right-3 p-1.5 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                      title="Expandir"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
-              {isSuggesting ? (
-                <div className="flex items-center text-zinc-500 text-sm">
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analisando contexto e sugerindo abordagem...
+
+              {/* Step 2: Anchors */}
+              <div className="bg-zinc-50 rounded-2xl p-6 border border-zinc-200">
+                <div className="flex items-center mb-4">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mr-3">
+                    <Anchor className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-zinc-900">Ancorar Conhecimento</h3>
+                    <p className="text-xs text-zinc-500">Insira tópicos, anotações ou referências específicas.</p>
+                  </div>
                 </div>
-              ) : (
                 <div className="relative group">
                   <textarea
                     className="w-full bg-white border border-zinc-200 rounded-xl p-4 pr-12 text-sm text-zinc-700 outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
                     rows={4}
-                    value={session.approach}
-                    onChange={(e) => onUpdateSession(chapter.id, session.id, { approach: e.target.value })}
-                    placeholder="Descreva como este tópico deve ser ensinado..."
+                    value={session.anchors}
+                    onChange={(e) => onUpdateSession(chapter.id, session.id, { anchors: e.target.value })}
+                    placeholder="Ex: Não esquecer de mencionar a analogia da caixa d'água para explicar potencial elétrico..."
                   />
                   <button
-                    onClick={() => setExpandedField('approach')}
+                    onClick={() => setExpandedField('anchors')}
                     className="absolute top-3 right-3 p-1.5 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                     title="Expandir"
                   >
                     <Maximize2 className="w-4 h-4" />
                   </button>
                 </div>
-              )}
-            </div>
-
-            {/* Step 2: Anchors */}
-            <div className="bg-zinc-50 rounded-2xl p-6 border border-zinc-200">
-              <div className="flex items-center mb-4">
-                <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mr-3">
-                  <Anchor className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-medium text-zinc-900">Ancorar Conhecimento</h3>
-                  <p className="text-xs text-zinc-500">Insira tópicos, anotações ou referências específicas.</p>
-                </div>
               </div>
-              <div className="relative group">
-                <textarea
-                  className="w-full bg-white border border-zinc-200 rounded-xl p-4 pr-12 text-sm text-zinc-700 outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
-                  rows={4}
-                  value={session.anchors}
-                  onChange={(e) => onUpdateSession(chapter.id, session.id, { anchors: e.target.value })}
-                  placeholder="Ex: Não esquecer de mencionar a analogia da caixa d'água para explicar potencial elétrico..."
-                />
+
+              {/* Step 3: Generate */}
+              <div className="flex justify-end">
                 <button
-                  onClick={() => setExpandedField('anchors')}
-                  className="absolute top-3 right-3 p-1.5 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                  title="Expandir"
+                  onClick={handleGenerate}
+                  disabled={isGenerating || isSuggesting}
+                  className="bg-zinc-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50 flex items-center shadow-sm"
                 >
-                  <Maximize2 className="w-4 h-4" />
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Gerando Conteúdo...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5 mr-2" />
+                      Gerar Sessão
+                    </>
+                  )}
                 </button>
               </div>
             </div>
-
-            {/* Step 3: Generate */}
-            <div className="flex justify-end">
-              <button
-                onClick={handleGenerate}
-                disabled={isGenerating || isSuggesting}
-                className="bg-zinc-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-zinc-800 transition-colors disabled:opacity-50 flex items-center shadow-sm"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Gerando Conteúdo...
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-5 h-5 mr-2" />
-                    Gerar Sessão
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
           </div>
         )}
       </div>
@@ -338,12 +342,12 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
       )}
 
       {/* Highlight Tooltip */}
-      {selectedText && (
-        <div 
+      {/*selectedText && (
+        <div
           className="fixed z-50 bg-zinc-900 text-white px-3 py-2 rounded-lg shadow-xl flex items-center space-x-4 animate-in fade-in slide-in-from-bottom-2"
           style={{ left: tooltipPos.x, top: tooltipPos.y, transform: 'translate(-50%, -100%)' }}
         >
-          <button 
+          <button
             onClick={handleDiscussClick}
             className="flex items-center text-sm font-medium hover:text-blue-300 transition-colors"
           >
@@ -351,7 +355,7 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
             Discutir
           </button>
           <div className="w-px h-4 bg-zinc-700"></div>
-          <button 
+          <button
             onClick={handleGenerateQuestion}
             disabled={isGeneratingAsset}
             className="flex items-center text-sm font-medium hover:text-emerald-300 transition-colors disabled:opacity-50"
@@ -360,7 +364,7 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
             Criar Questão
           </button>
           <div className="w-px h-4 bg-zinc-700"></div>
-          <button 
+          <button
             onClick={handleGenerateImage}
             disabled={isGeneratingAsset}
             className="flex items-center text-sm font-medium hover:text-purple-300 transition-colors disabled:opacity-50"
@@ -369,7 +373,7 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
             Gerar Imagem
           </button>
         </div>
-      )}
+      )}/*
 
       {/* Expanded Textarea Modal */}
       {expandedField && (
@@ -384,8 +388,8 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
                   {expandedField === 'approach' ? 'Abordagem Pedagógica' : 'Ancorar Conhecimento'}
                 </h3>
               </div>
-              <button 
-                onClick={() => setExpandedField(null)} 
+              <button
+                onClick={() => setExpandedField(null)}
                 className="p-2 hover:bg-zinc-200 rounded-full transition-colors"
                 title="Fechar"
               >
