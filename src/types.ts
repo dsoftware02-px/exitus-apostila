@@ -55,6 +55,7 @@ export interface Session {
   summary: string;
   approach: string;
   anchors: string;
+  layoutId?: string;
 }
 
 export interface Chapter {

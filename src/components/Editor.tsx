@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Session, Chapter, Book } from '../types';
 import { suggestApproach, generateSessionContent, generateQuestion, generateImage } from '../lib/gemini';
+import { renderLatexInHtml } from '../lib/latex';
 import { buildSlidingWindowPayload } from '../lib/slidingWindow';
-import { Sparkles, Anchor, Play, CheckCircle2, Loader2, MessageSquarePlus, Image as ImageIcon, HelpCircle, Maximize2, X, Columns, FileText, Eye } from 'lucide-react';
+import { LAYOUT_OPTIONS, resolveLayoutId } from '../lib/layouts';
+import { Sparkles, Anchor, Play, CheckCircle2, Loader2, MessageSquarePlus, Image as ImageIcon, HelpCircle, Maximize2, X, Columns, FileText, Eye, Settings2 } from 'lucide-react';
 
 import { LiveA4Page } from './LiveA4Page';
 import { RichEditor } from './RichEditor';
@@ -25,6 +27,7 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
   const [selectedText, setSelectedText] = useState('');
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [viewMode, setViewMode] = useState<ViewMode>('SPLIT');
+  const selectedLayoutId = resolveLayoutId(session?.layoutId);
 
   // Auto-suggest approach when a pending session is selected
   useEffect(() => {
@@ -82,6 +85,11 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
     onUpdateSession(chapter.id, session.id, { status: 'VALIDATED' });
   };
 
+  const handleLayoutChange = (layoutId: string) => {
+    if (!session || !chapter) return;
+    onUpdateSession(chapter.id, session.id, { layoutId: resolveLayoutId(layoutId) });
+  };
+
   // Handle text selection for Highlight & Discuss
   const handleMouseUp = (e: React.MouseEvent) => {
     const selection = window.getSelection();
@@ -110,7 +118,8 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
       const questionHtml = question
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\n/g, '<br>');
-      const newContent = session.content + `\n<hr>\n<h3>Questão Proposta</h3>\n<p>${questionHtml}</p>\n`;
+      const renderedQuestionHtml = renderLatexInHtml(questionHtml);
+      const newContent = session.content + `\n<hr>\n<h3>Questão Proposta</h3>\n<div>${renderedQuestionHtml}</div>\n`;
       onUpdateSession(chapter.id, session.id, { content: newContent });
     } catch (e) {
       console.error(e);
@@ -170,35 +179,53 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
           <p className="text-sm text-zinc-500 mt-2">Objetivo: {session.objective}</p>
         </div>
 
-        {/* View Mode Toolbar */}
-        {session.content && (
+        <div className="flex items-center gap-3">
+          {/* View Mode Toolbar */}
+          {session.content && (
+            <div className="flex items-center bg-zinc-100 p-1 rounded-xl shadow-sm border border-zinc-200">
+              <button
+                onClick={() => setViewMode('WRITE')}
+                className={`flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${viewMode === 'WRITE' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+                title="Modo Foco (Apenas Editor)"
+              >
+                <FileText className="w-4 h-4 mr-1.5" />
+                Escrever
+              </button>
+              <button
+                onClick={() => setViewMode('SPLIT')}
+                className={`flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${viewMode === 'SPLIT' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+                title="Tela Dividida (Editor + A4)"
+              >
+                <Columns className="w-4 h-4 mr-1.5" />
+                Dividido
+              </button>
+              <button
+                onClick={() => setViewMode('PREVIEW')}
+                className={`flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${viewMode === 'PREVIEW' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+                title="Modo Impressão (Apenas A4)"
+              >
+                <Eye className="w-4 h-4 mr-1.5" />
+                Visualizar
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center bg-zinc-100 p-1 rounded-xl shadow-sm border border-zinc-200">
-            <button
-              onClick={() => setViewMode('WRITE')}
-              className={`flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${viewMode === 'WRITE' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
-              title="Modo Foco (Apenas Editor)"
+            <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wide px-2">Layout</span>
+            <select
+              value={selectedLayoutId}
+              onChange={(e) => handleLayoutChange(e.target.value)}
+              className="bg-white text-sm text-zinc-700 border border-zinc-200 rounded-lg px-3 py-1.5 outline-none focus:ring-2 focus:ring-zinc-900"
+              title="Escolha um layout visual para a página"
             >
-              <FileText className="w-4 h-4 mr-1.5" />
-              Escrever
-            </button>
-            <button
-              onClick={() => setViewMode('SPLIT')}
-              className={`flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${viewMode === 'SPLIT' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
-              title="Tela Dividida (Editor + A4)"
-            >
-              <Columns className="w-4 h-4 mr-1.5" />
-              Dividido
-            </button>
-            <button
-              onClick={() => setViewMode('PREVIEW')}
-              className={`flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${viewMode === 'PREVIEW' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
-              title="Modo Impressão (Apenas A4)"
-            >
-              <Eye className="w-4 h-4 mr-1.5" />
-              Visualizar
-            </button>
+              {LAYOUT_OPTIONS.map((layout) => (
+                <option key={layout.id} value={layout.id}>
+                  {layout.name}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Content Area */}
@@ -219,7 +246,7 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
             {/* Live A4 Preview */}
             {(viewMode === 'PREVIEW' || viewMode === 'SPLIT') && (
               <div className={`h-full ${viewMode === 'SPLIT' ? 'w-1/2' : 'w-full'} bg-zinc-200/50`}>
-                <LiveA4Page content={session.content} />
+                <LiveA4Page content={session.content} layoutId={selectedLayoutId} sessionTitle={session.title} />
               </div>
             )}
           </>
@@ -377,7 +404,7 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
 
       {/* Expanded Textarea Modal */}
       {expandedField && (
-        <div className="fixed inset-0 z-[100] bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-100 bg-zinc-900/40 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-zinc-200 flex items-center justify-between bg-zinc-50">
               <div className="flex items-center">

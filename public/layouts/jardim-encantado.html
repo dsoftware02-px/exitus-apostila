@@ -1,0 +1,245 @@
+<style>
+  .kid-layout-jardim {
+    min-height: 297mm;
+    width: 100%;
+    margin: 0;
+    padding: 7mm;
+    box-sizing: border-box;
+    background: linear-gradient(135deg, #fce4ec 0%, #f3e5f5 30%, #e8eaf6 60%, #e0f7fa 100%);
+    position: relative;
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    color: #1f2937;
+    break-inside: auto;
+    page-break-inside: auto;
+    overflow: visible;
+  }
+
+  /* Decorative dotted border frame */
+  .kid-layout-jardim::before {
+    content: '';
+    position: absolute;
+    top: 3mm;
+    left: 3mm;
+    right: 3mm;
+    bottom: 3mm;
+    border: 2.5px dashed #d1a3d1;
+    border-radius: 18px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .jardim-card {
+    min-height: 270mm;
+    box-sizing: border-box;
+    background: #ffffffee;
+    border-radius: 22px;
+    padding: 11mm 11mm 13mm 11mm;
+    position: relative;
+    z-index: 1;
+    border: 2px solid #f0c4f0;
+  }
+
+  .jardim-ribbon {
+    display: table;
+    margin: 0 auto 8mm;
+    background: linear-gradient(90deg, #f8bbd0, #ce93d8, #b39ddb);
+    color: #ffffff;
+    font-size: 19pt;
+    font-weight: 800;
+    line-height: 1.2;
+    border-radius: 30px;
+    padding: 6px 22px 7px;
+    text-align: center;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.12);
+    letter-spacing: 0.5px;
+  }
+
+  .jardim-main {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #2d1b3d;
+    font-size: 12pt;
+    line-height: 1.72;
+  }
+
+  .jardim-main h1 {
+    color: #8e24aa;
+    font-size: 22pt;
+    font-weight: 800;
+    margin: 0 0 10px;
+    line-height: 1.3;
+  }
+
+  .jardim-main h2 {
+    color: #ab47bc;
+    font-size: 18pt;
+    font-weight: 700;
+    margin: 0 0 8px;
+    line-height: 1.3;
+  }
+
+  .jardim-main h3 {
+    color: #7b1fa2;
+    font-size: 15pt;
+    font-weight: 700;
+    margin: 0 0 8px;
+    line-height: 1.3;
+  }
+
+  .jardim-main h4 {
+    color: #6a1b9a;
+    font-size: 13pt;
+    font-weight: 600;
+    margin: 0 0 6px;
+    line-height: 1.3;
+  }
+
+  .jardim-main p,
+  .jardim-main li {
+    margin: 0 0 10px;
+    text-align: justify;
+  }
+
+  .jardim-main ul,
+  .jardim-main ol {
+    margin: 0 0 10px;
+    padding-left: 24px;
+  }
+
+  .jardim-main img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    border: 2px solid #e1bee7;
+  }
+
+  .jardim-main img[style*="float: left"] {
+    margin: 0 10px 8px 0 !important;
+  }
+
+  .jardim-main img[style*="float: right"] {
+    margin: 0 0 8px 10px !important;
+  }
+
+  .jardim-main img[style*="margin-left: auto"][style*="margin-right: auto"] {
+    display: block;
+    margin: 12px auto !important;
+  }
+
+  .jardim-question {
+    margin: 7mm auto;
+    display: table;
+    background: linear-gradient(90deg, #f48fb1, #ce93d8);
+    color: #ffffff;
+    font-size: 20pt;
+    font-weight: 800;
+    border-radius: 30px;
+    padding: 5px 20px;
+    line-height: 1.2;
+    text-align: center;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  }
+
+  .jardim-bottom {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 10px;
+    align-items: stretch;
+    margin-top: 6mm;
+  }
+
+  .jardim-bottom-text {
+    background: #fce4ec;
+    border: 2px solid #f8bbd0;
+    border-radius: 14px;
+    padding: 10px 12px;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #4a1942;
+    font-size: 11.3pt;
+    line-height: 1.65;
+    text-align: justify;
+  }
+
+  .jardim-image-slot {
+    border-radius: 14px;
+    overflow: hidden;
+    min-height: 60mm;
+    background: #f3e5f5;
+    border: 2px solid #e1bee7;
+  }
+
+  .jardim-image-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .jardim-intro {
+    margin-top: 7mm;
+    background: #fce4eccc;
+    border-left: 4px solid #f48fb1;
+    border-radius: 12px;
+    padding: 10px 12px;
+    color: #4a1942;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    text-align: justify;
+  }
+
+  /* Layout Blocks inside template */
+  .jardim-main .column-layout {
+    display: grid;
+    gap: 5mm;
+    margin: 4mm 0;
+  }
+  .jardim-main .column-layout.cols-2 { grid-template-columns: 1fr 1fr; }
+  .jardim-main .column-layout.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .jardim-main .column-item { min-height: 8mm; }
+
+  .jardim-main .callout-box {
+    border-radius: 12px;
+    padding: 3mm 4mm;
+    margin: 4mm 0;
+    border-left: 4px solid;
+    page-break-inside: avoid;
+  }
+  .jardim-main .callout-box::before {
+    font-size: 10pt;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 2mm;
+  }
+  .jardim-main .callout-info { background: #e8eaf6; border-left-color: #7986cb; }
+  .jardim-main .callout-info::before { content: "ℹ️ Informação"; color: #3949ab; }
+  .jardim-main .callout-tip { background: #f3e5f5; border-left-color: #ba68c8; }
+  .jardim-main .callout-tip::before { content: "💡 Dica"; color: #8e24aa; }
+  .jardim-main .callout-warning { background: #fff3e0; border-left-color: #ffb74d; }
+  .jardim-main .callout-warning::before { content: "⚠️ Atenção"; color: #ef6c00; }
+  .jardim-main .callout-example { background: #fce4ec; border-left-color: #f48fb1; }
+  .jardim-main .callout-example::before { content: "📝 Exemplo"; color: #c2185b; }
+
+  .jardim-main [data-type="page-break"] {
+    break-after: page;
+    page-break-after: always;
+    height: 0; margin: 0; padding: 0; border: none;
+  }
+  .jardim-main .spacer-block { display: block; border: none; background: none; }
+</style>
+
+<section class="kid-layout-jardim">
+  <article class="jardim-card">
+    <header class="jardim-ribbon">🌸 {{SESSION_TITLE}} 🌸</header>
+
+    <article class="jardim-main">{{MAIN_CONTENT}}</article>
+
+    <div class="jardim-question">🦋 O que vamos descobrir?</div>
+
+    <section class="jardim-bottom">
+      <div class="jardim-bottom-text">{{SIDEBAR_CONTENT}}</div>
+      <div class="jardim-image-slot">{{HERO_IMAGE}}</div>
+    </section>
+
+    <aside class="jardim-intro">{{INTRO_TEXT}}</aside>
+  </article>
+</section>

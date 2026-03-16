@@ -1,0 +1,245 @@
+<style>
+  .kid-layout-doces {
+    min-height: 297mm;
+    width: 100%;
+    margin: 0;
+    padding: 7mm;
+    box-sizing: border-box;
+    background: linear-gradient(160deg, #fff9c4 0%, #ffecb3 25%, #ffe0b2 50%, #ffccbc 75%, #f8bbd0 100%);
+    position: relative;
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    color: #1f2937;
+    break-inside: auto;
+    page-break-inside: auto;
+    overflow: visible;
+  }
+
+  /* Rounded confetti border */
+  .kid-layout-doces::before {
+    content: '';
+    position: absolute;
+    top: 3mm;
+    left: 3mm;
+    right: 3mm;
+    bottom: 3mm;
+    border: 3px dotted #ffab91;
+    border-radius: 20px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .doces-card {
+    min-height: 270mm;
+    box-sizing: border-box;
+    background: #fffffaee;
+    border-radius: 24px;
+    padding: 11mm 11mm 13mm 11mm;
+    position: relative;
+    z-index: 1;
+    border: 2px solid #ffcc80;
+  }
+
+  .doces-ribbon {
+    display: table;
+    margin: 0 auto 8mm;
+    background: linear-gradient(90deg, #ffab91, #ff8a65, #ffcc80);
+    color: #ffffff;
+    font-size: 19pt;
+    font-weight: 800;
+    line-height: 1.2;
+    border-radius: 30px;
+    padding: 6px 24px 7px;
+    text-align: center;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    letter-spacing: 0.5px;
+  }
+
+  .doces-main {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #3e2723;
+    font-size: 12pt;
+    line-height: 1.72;
+  }
+
+  .doces-main h1 {
+    color: #e65100;
+    font-size: 22pt;
+    font-weight: 800;
+    margin: 0 0 10px;
+    line-height: 1.3;
+  }
+
+  .doces-main h2 {
+    color: #ef6c00;
+    font-size: 18pt;
+    font-weight: 700;
+    margin: 0 0 8px;
+    line-height: 1.3;
+  }
+
+  .doces-main h3 {
+    color: #f57c00;
+    font-size: 15pt;
+    font-weight: 700;
+    margin: 0 0 8px;
+    line-height: 1.3;
+  }
+
+  .doces-main h4 {
+    color: #ff8f00;
+    font-size: 13pt;
+    font-weight: 600;
+    margin: 0 0 6px;
+    line-height: 1.3;
+  }
+
+  .doces-main p,
+  .doces-main li {
+    margin: 0 0 10px;
+    text-align: justify;
+  }
+
+  .doces-main ul,
+  .doces-main ol {
+    margin: 0 0 10px;
+    padding-left: 24px;
+  }
+
+  .doces-main img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    border: 2px solid #ffe0b2;
+  }
+
+  .doces-main img[style*="float: left"] {
+    margin: 0 10px 8px 0 !important;
+  }
+
+  .doces-main img[style*="float: right"] {
+    margin: 0 0 8px 10px !important;
+  }
+
+  .doces-main img[style*="margin-left: auto"][style*="margin-right: auto"] {
+    display: block;
+    margin: 12px auto !important;
+  }
+
+  .doces-question {
+    margin: 7mm auto;
+    display: table;
+    background: linear-gradient(90deg, #ffab91, #ffcc80);
+    color: #ffffff;
+    font-size: 20pt;
+    font-weight: 800;
+    border-radius: 30px;
+    padding: 5px 20px;
+    line-height: 1.2;
+    text-align: center;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+
+  .doces-bottom {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 10px;
+    align-items: stretch;
+    margin-top: 6mm;
+  }
+
+  .doces-bottom-text {
+    background: #fff8e1;
+    border: 2px solid #ffe082;
+    border-radius: 14px;
+    padding: 10px 12px;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #4e342e;
+    font-size: 11.3pt;
+    line-height: 1.65;
+    text-align: justify;
+  }
+
+  .doces-image-slot {
+    border-radius: 14px;
+    overflow: hidden;
+    min-height: 60mm;
+    background: #fff3e0;
+    border: 2px solid #ffcc80;
+  }
+
+  .doces-image-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .doces-intro {
+    margin-top: 7mm;
+    background: #fff8e1cc;
+    border-left: 4px solid #ffb74d;
+    border-radius: 12px;
+    padding: 10px 12px;
+    color: #4e342e;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    text-align: justify;
+  }
+
+  /* Layout Blocks inside template */
+  .doces-main .column-layout {
+    display: grid;
+    gap: 5mm;
+    margin: 4mm 0;
+  }
+  .doces-main .column-layout.cols-2 { grid-template-columns: 1fr 1fr; }
+  .doces-main .column-layout.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .doces-main .column-item { min-height: 8mm; }
+
+  .doces-main .callout-box {
+    border-radius: 12px;
+    padding: 3mm 4mm;
+    margin: 4mm 0;
+    border-left: 4px solid;
+    page-break-inside: avoid;
+  }
+  .doces-main .callout-box::before {
+    font-size: 10pt;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 2mm;
+  }
+  .doces-main .callout-info { background: #e3f2fd; border-left-color: #64b5f6; }
+  .doces-main .callout-info::before { content: "ℹ️ Informação"; color: #1565c0; }
+  .doces-main .callout-tip { background: #fff8e1; border-left-color: #ffca28; }
+  .doces-main .callout-tip::before { content: "💡 Dica"; color: #f9a825; }
+  .doces-main .callout-warning { background: #fbe9e7; border-left-color: #ff8a65; }
+  .doces-main .callout-warning::before { content: "⚠️ Atenção"; color: #e64a19; }
+  .doces-main .callout-example { background: #fff3e0; border-left-color: #ffb74d; }
+  .doces-main .callout-example::before { content: "📝 Exemplo"; color: #ef6c00; }
+
+  .doces-main [data-type="page-break"] {
+    break-after: page;
+    page-break-after: always;
+    height: 0; margin: 0; padding: 0; border: none;
+  }
+  .doces-main .spacer-block { display: block; border: none; background: none; }
+</style>
+
+<section class="kid-layout-doces">
+  <article class="doces-card">
+    <header class="doces-ribbon">🍬 {{SESSION_TITLE}} 🍭</header>
+
+    <article class="doces-main">{{MAIN_CONTENT}}</article>
+
+    <div class="doces-question">🧁 O que vamos descobrir?</div>
+
+    <section class="doces-bottom">
+      <div class="doces-bottom-text">{{SIDEBAR_CONTENT}}</div>
+      <div class="doces-image-slot">{{HERO_IMAGE}}</div>
+    </section>
+
+    <aside class="doces-intro">{{INTRO_TEXT}}</aside>
+  </article>
+</section>

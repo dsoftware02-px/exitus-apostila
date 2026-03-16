@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { BookMetadata, Part, SlidingWindowPayload } from '../types';
+import { DEFAULT_LAYOUT_ID } from './layouts';
 
 // Inicialização Lazy para evitar crash se a chave não estiver presente no load
 let aiClient: GoogleGenAI | null = null;
@@ -114,7 +115,8 @@ export async function generateMacroStructure(metadata: BookMetadata): Promise<Pa
           content: '',
           summary: '',
           approach: '',
-          anchors: ''
+          anchors: '',
+          layoutId: DEFAULT_LAYOUT_ID
         }))
       }))
     }));
@@ -214,6 +216,7 @@ export async function refineMacroStructure(currentParts: Part[], metadata: BookM
                 summary: '',
                 approach: '',
                 anchors: '',
+                layoutId: DEFAULT_LAYOUT_ID,
                 ...existingSession,
                 ...s,
               };
