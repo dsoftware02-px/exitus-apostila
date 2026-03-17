@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent, ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import { generateImage, generateQuestion } from '../lib/gemini';
 import { renderLatexInHtml } from '../lib/latex';
@@ -10,6 +10,7 @@ import TextAlign from '@tiptap/extension-text-align';
 import { Color } from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import { Node, mergeAttributes } from '@tiptap/core';
+import { STANDARD_MARGINS } from '../lib/layouts';
 import {
     ColumnLayout, Column, CalloutBox, PageBreak, SpacerBlock,
     insertColumnLayout, insertCalloutBox, insertPageBreak, insertSpacer,
@@ -326,18 +327,52 @@ function normalizeWidthValue(width: unknown): string {
     return trimmed;
 }
 
+const A4_WIDTH_MM = 210;
+const A4_HEIGHT_MM = 297;
+const PLACEHOLDER_TAG_REGEX = /<(img_req|img-req|q_req|q-req)\b/i;
+
+function mmToPx(mm: number): number {
+    return (mm / 25.4) * 96;
+}
+
+function normalizePlaceholderTagFlow(html: string): string {
+    if (!html || !PLACEHOLDER_TAG_REGEX.test(html)) return html;
+
+    const parser = new DOMParser();
+    const document = parser.parseFromString(`<div id="editor-placeholder-root">${html}</div>`, 'text/html');
+    const root = document.getElementById('editor-placeholder-root');
+
+    if (!root) return html;
+
+    root.querySelectorAll('img_req, img-req, q_req, q-req').forEach((placeholderElement) => {
+        if (!placeholderElement.childNodes.length) return;
+
+        const trailingContent = document.createDocumentFragment();
+        while (placeholderElement.firstChild) {
+            trailingContent.appendChild(placeholderElement.firstChild);
+        }
+
+        placeholderElement.after(trailingContent);
+    });
+
+    return root.innerHTML;
+}
+
 export function RichEditor({ content, onChange, placeholder }: RichEditorProps) {
     const [isFocused, setIsFocused] = useState(false);
     const [showLayoutMenu, setShowLayoutMenu] = useState(false);
     const [showCalloutMenu, setShowCalloutMenu] = useState(false);
     const [showColorPicker, setShowColorPicker] = useState(false);
     const [showHighlightPicker, setShowHighlightPicker] = useState(false);
+    const [pageScale, setPageScale] = useState(1);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const editorViewportRef = useRef<HTMLDivElement>(null);
     const layoutMenuRef = useRef<HTMLDivElement>(null);
     const calloutMenuRef = useRef<HTMLDivElement>(null);
     const colorPickerRef = useRef<HTMLDivElement>(null);
     const highlightPickerRef = useRef<HTMLDivElement>(null);
-    const lastEditorHtmlRef = useRef(content || '');
+    const normalizedIncomingContent = useMemo(() => normalizePlaceholderTagFlow(content || ''), [content]);
+    const lastEditorHtmlRef = useRef(normalizedIncomingContent);
 
     // Tratamento do conteúdo: o tiptap já recebe HTML e renderiza. Se o conteúdo vazio for passado e tiveros um placeholder, vamos usar o CSS do Tiptap depois.
     const editor = useEditor({
@@ -366,10 +401,10 @@ export function RichEditor({ content, onChange, placeholder }: RichEditorProps) 
             ImgReq,
             QReq,
         ],
-        content: content,
+        content: normalizedIncomingContent,
         onUpdate: ({ editor }) => {
             // Passa o HTML formatado de volta
-            const html = editor.getHTML();
+            const html = normalizePlaceholderTagFlow(editor.getHTML());
             lastEditorHtmlRef.current = html;
             onChange(html);
         },
@@ -385,14 +420,40 @@ export function RichEditor({ content, onChange, placeholder }: RichEditorProps) 
     useEffect(() => {
         if (!editor) return;
 
-        const currentEditorHtml = editor.getHTML();
-        const isExternalUpdate = content !== lastEditorHtmlRef.current && content !== currentEditorHtml;
+        const currentEditorHtml = normalizePlaceholderTagFlow(editor.getHTML());
+        const isExternalUpdate = normalizedIncomingContent !== lastEditorHtmlRef.current && normalizedIncomingContent !== currentEditorHtml;
 
         if (isExternalUpdate && !editor.isFocused) {
-            editor.commands.setContent(content, { emitUpdate: false });
-            lastEditorHtmlRef.current = content;
+            editor.commands.setContent(normalizedIncomingContent, { emitUpdate: false });
+            lastEditorHtmlRef.current = normalizedIncomingContent;
         }
-    }, [content, editor]);
+    }, [normalizedIncomingContent, editor]);
+
+    useEffect(() => {
+        const viewportElement = editorViewportRef.current;
+        if (!viewportElement) return;
+
+        const a4WidthPx = mmToPx(A4_WIDTH_MM);
+
+        const updatePageScale = () => {
+            const availableWidth = Math.max(viewportElement.clientWidth - 48, 0);
+            if (!availableWidth) return;
+
+            const nextScale = Math.min(1, availableWidth / a4WidthPx);
+            setPageScale((previousScale) => (
+                Math.abs(previousScale - nextScale) < 0.01 ? previousScale : nextScale
+            ));
+        };
+
+        updatePageScale();
+
+        const observer = new ResizeObserver(updatePageScale);
+        observer.observe(viewportElement);
+
+        return () => {
+            observer.disconnect();
+        };
+    }, []);
 
     // Close dropdown menus on outside click
     useEffect(() => {
@@ -503,7 +564,7 @@ export function RichEditor({ content, onChange, placeholder }: RichEditorProps) 
         <div className="flex flex-col h-full bg-white border-r border-zinc-200 overflow-hidden mx-auto w-full">
             {/* Editor Toolbar */}
             <div className="relative z-50 flex items-center border-b border-zinc-200 bg-zinc-50/80 px-3 py-1.5 shrink-0 flex-wrap gap-0.5"
-                 style={{ backdropFilter: 'blur(8px)' }}
+                style={{ backdropFilter: 'blur(8px)' }}
             >
 
                 {/* Font Family Selector */}
@@ -815,7 +876,8 @@ export function RichEditor({ content, onChange, placeholder }: RichEditorProps) 
 
             {/* Editor Content */}
             <div
-                className="flex-1 overflow-y-auto w-full cursor-text bg-white"
+                ref={editorViewportRef}
+                className="flex-1 overflow-auto w-full cursor-text bg-zinc-200/50 flex flex-col items-center"
                 onClick={(event) => {
                     const target = event.target as HTMLElement;
 
@@ -830,7 +892,17 @@ export function RichEditor({ content, onChange, placeholder }: RichEditorProps) 
                 }}
                 onBlur={() => setIsFocused(false)}
             >
-                <div className="px-8 py-6 max-w-none">
+                <div
+                    className="my-8 bg-white shrink-0"
+                    style={{
+                        width: `${A4_WIDTH_MM}mm`,
+                        minHeight: `${A4_HEIGHT_MM}mm`,
+                        padding: `${STANDARD_MARGINS.top}mm ${STANDARD_MARGINS.right}mm ${STANDARD_MARGINS.bottom}mm ${STANDARD_MARGINS.left}mm`,
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+                        boxSizing: 'border-box',
+                        zoom: pageScale,
+                    }}
+                >
                     <EditorContent editor={editor} className="min-h-full" />
                 </div>
             </div>

@@ -16,11 +16,18 @@ export function buildSlidingWindowPayload(
   // 1. Objetivo do Capítulo (Norteador)
   const chapterObjective = chapter.objective;
 
-  // 2. Resumo condensado das sessões anteriores (1 a N-1)
-  const previousSummaries = previousSessions
-    .filter((s) => s.status === 'VALIDATED')
-    .map((s) => `[${s.title}]: ${s.summary || 'Resumo não disponível.'}`)
-    .join('\n');
+  // 2. Resumo estruturado das sessões anteriores (1 a N-1) contemplando entidades já abordadas
+  const validatedSessions = previousSessions.filter((s) => s.status === 'VALIDATED');
+  let previousSummaries = 'Nenhum contexto anterior.';
+  
+  if (validatedSessions.length > 0) {
+    const contextList = validatedSessions.map(s => ({
+      session_title: s.title,
+      content_summary: s.summary || '',
+      entities_covered: s.entities || []
+    }));
+    previousSummaries = JSON.stringify(contextList, null, 2);
+  }
 
   // 3. Últimos 3 parágrafos da Sessão N-1 (Para fluidez e gancho)
   let lastParagraphs = '';

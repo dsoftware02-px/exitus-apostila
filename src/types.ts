@@ -44,6 +44,8 @@ export interface BookMetadata {
     imageStyle: string; // Ex: Ilustrações realistas, Flat design, Fotos
     layoutStyle: string; // Ex: Duas colunas, Bloco único, Estilo revista
   };
+
+  pacContent?: string;
 }
 
 export interface Session {
@@ -55,6 +57,8 @@ export interface Session {
   summary: string;
   approach: string;
   anchors: string;
+  entities?: string[];
+  pacObjectives?: string[];
   layoutId?: string;
 }
 

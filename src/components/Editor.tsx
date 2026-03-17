@@ -17,10 +17,14 @@ interface EditorProps {
   session: Session | null;
   onUpdateSession: (chapterId: string, sessionId: string, updates: Partial<Session>) => void;
   onUpdateBookLayout: (layoutId: string) => void;
+  onUpdateBook: React.Dispatch<React.SetStateAction<Book>>;
+  onBackToMacro: () => void;
   onDiscussText: (text: string) => void;
+  activeChapterId?: string | null;
+  onSelectSession?: (chapterId: string, sessionId: string) => void;
 }
 
-export function Editor({ book, chapter, session, onUpdateSession, onUpdateBookLayout, onDiscussText }: EditorProps) {
+export function Editor({ book, chapter, session, onUpdateSession, onUpdateBookLayout, onUpdateBook, onBackToMacro, onDiscussText, activeChapterId, onSelectSession }: EditorProps) {
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingAsset, setIsGeneratingAsset] = useState(false);
