@@ -279,6 +279,8 @@ export const FALLBACK_TEMPLATE = `
   color:#1f2937;
   break-inside:auto;
   page-break-inside:auto;
+  box-decoration-break:clone;
+  -webkit-box-decoration-break:clone;
 ">
   <h1 style="margin:0 0 8mm;color:#b45309;font-size:24pt;text-align:center;line-height:1.2;">{{SESSION_TITLE}}</h1>
 

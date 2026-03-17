@@ -901,6 +901,8 @@ export function RichEditor({ content, onChange, placeholder }: RichEditorProps) 
                         boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
                         boxSizing: 'border-box',
                         zoom: pageScale,
+                        backgroundImage: 'linear-gradient(to bottom, transparent 297mm, #e5e7eb 297mm, #e5e7eb calc(297mm + 1px), transparent calc(297mm + 1px))',
+                        backgroundSize: '100% 297mm'
                     }}
                 >
                     <EditorContent editor={editor} className="min-h-full" />
