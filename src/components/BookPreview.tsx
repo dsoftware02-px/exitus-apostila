@@ -1,7 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Book } from '../types';
-import { renderLatexInHtml } from '../lib/latex';
 import { ArrowLeft, Printer, Loader2 } from 'lucide-react';
+import { hasLayoutTemplate, resolveLayoutId } from '../lib/layouts';
+import {
+  normalizeEditorHtml,
+  extractLayoutBlocks,
+  applyLayoutTemplate,
+  loadLayoutTemplate,
+  FALLBACK_TEMPLATE,
+  TEMPLATE_IMAGE_SAFETY_CSS,
+} from '../lib/layout-renderer';
 import editorStylesRaw from '../index.css?raw';
 
 interface BookPreviewProps {
@@ -274,6 +282,42 @@ const BOOK_PAGED_CSS = `
   font-size: 10pt;
 }
 
+/* ─── Sessões com layout de template ─── */
+.session-templated {
+  break-before: page;
+  margin: -20mm;  /* compensar @page margin para o template controlar seu próprio padding */
+  padding: 0;
+}
+
+.session-templated-label {
+  position: absolute;
+  top: 4mm;
+  left: 4mm;
+  font-size: 7pt;
+  font-weight: 600;
+  color: rgba(0,0,0,0.25);
+  letter-spacing: 0.5px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.session-templated section {
+  width: 210mm;
+  min-height: 297mm;
+  box-sizing: border-box;
+}
+
+/* Imagens dentro de sessões com template */
+.session-templated img {
+  max-width: 100%;
+  height: auto;
+}
+
+.session-templated [style*="max-height"] img {
+  max-height: inherit;
+  object-fit: contain;
+}
+
 @media print {
   .pagedjs_page {
     box-shadow: none !important;
@@ -281,66 +325,6 @@ const BOOK_PAGED_CSS = `
   }
 }
 `;
-
-function styleStringToObject(style: string): Record<string, string> {
-  return style
-    .split(';')
-    .map(part => part.trim())
-    .filter(Boolean)
-    .reduce<Record<string, string>>((accumulator, part) => {
-      const [property, ...valueParts] = part.split(':');
-      if (!property || valueParts.length === 0) return accumulator;
-      accumulator[property.trim().toLowerCase()] = valueParts.join(':').trim();
-      return accumulator;
-    }, {});
-}
-
-function styleObjectToString(styleObject: Record<string, string>): string {
-  return Object.entries(styleObject)
-    .filter(([, value]) => value && value.trim().length > 0)
-    .map(([property, value]) => `${property}: ${value}`)
-    .join('; ');
-}
-
-function mergeInlineStyles(baseStyle: string, overrideStyle: string): string {
-  const merged = {
-    ...styleStringToObject(baseStyle),
-    ...styleStringToObject(overrideStyle)
-  };
-  return styleObjectToString(merged);
-}
-
-function normalizeEditorHtml(content: string): string {
-  const parser = new DOMParser();
-  const document = parser.parseFromString(`<div id="normalize-root">${content}</div>`, 'text/html');
-  const root = document.getElementById('normalize-root');
-
-  if (!root) return renderLatexInHtml(content);
-
-  root.querySelectorAll('img').forEach((imageElement) => {
-    const containerStyle = imageElement.getAttribute('containerstyle') || imageElement.getAttribute('containerStyle') || '';
-    const inlineStyle = imageElement.getAttribute('style') || '';
-    const mergedStyle = mergeInlineStyles(containerStyle, inlineStyle);
-
-    if (mergedStyle) {
-      imageElement.setAttribute('style', mergedStyle);
-    }
-
-    imageElement.removeAttribute('containerstyle');
-    imageElement.removeAttribute('containerStyle');
-    imageElement.removeAttribute('wrapperstyle');
-    imageElement.removeAttribute('wrapperStyle');
-
-    const widthAttribute = imageElement.getAttribute('width');
-    if (widthAttribute && !styleStringToObject(imageElement.getAttribute('style') || '').width) {
-      const normalizedWidth = /^\d+$/.test(widthAttribute) ? `${widthAttribute}px` : widthAttribute;
-      const mergedWithWidth = mergeInlineStyles(imageElement.getAttribute('style') || '', `width: ${normalizedWidth}; height: auto;`);
-      imageElement.setAttribute('style', mergedWithWidth);
-    }
-  });
-
-  return renderLatexInHtml(root.innerHTML);
-}
 
 export function BookPreview({ book, onBack }: BookPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -465,6 +449,19 @@ export function BookPreview({ book, onBack }: BookPreviewProps) {
         return;
       }
 
+      // Resolver o layout global do livro
+      const bookLayoutId = resolveLayoutId(book.layoutId);
+      const useBookLayout = hasLayoutTemplate(bookLayoutId);
+
+      let bookTemplate: string | null = null;
+      if (useBookLayout) {
+        bookTemplate = await loadLayoutTemplate(bookLayoutId);
+      }
+
+      if (shouldAbort() || !containerRef.current?.isConnected) {
+        return;
+      }
+
       // Montar o HTML completo do livro
       let bookHtml = '';
 
@@ -514,16 +511,29 @@ export function BookPreview({ book, onBack }: BookPreviewProps) {
           `;
 
           chapter.sessions.forEach((session, sIdx) => {
-            bookHtml += `<div class="session-block">`;
-            bookHtml += `<h3><span class="session-number">${cIdx + 1}.${sIdx + 1}</span> ${session.title}</h3>`;
+            if (useBookLayout && bookTemplate && session.content) {
+              // ── Sessão com layout de template (global do livro) ──
+              const normalizedContent = normalizeEditorHtml(session.content);
+              const blocks = extractLayoutBlocks(normalizedContent, session.title);
+              const templateHtml = applyLayoutTemplate(bookTemplate, blocks);
 
-            if (session.content) {
-              bookHtml += `<div class="session-content pagedjs_textarea_mimic">${normalizeEditorHtml(session.content)}</div>`;
+              bookHtml += `<div class="session-templated">`;
+              bookHtml += `<div class="session-templated-label">${cIdx + 1}.${sIdx + 1} ${session.title}</div>`;
+              bookHtml += templateHtml;
+              bookHtml += `</div>`;
             } else {
-              bookHtml += `<div class="session-pending">Conteúdo pendente para esta sessão.</div>`;
-            }
+              // ── Sessão sem layout (padrão) ──
+              bookHtml += `<div class="session-block">`;
+              bookHtml += `<h3><span class="session-number">${cIdx + 1}.${sIdx + 1}</span> ${session.title}</h3>`;
 
-            bookHtml += `</div>`;
+              if (session.content) {
+                bookHtml += `<div class="session-content pagedjs_textarea_mimic">${normalizeEditorHtml(session.content)}</div>`;
+              } else {
+                bookHtml += `<div class="session-pending">Conteúdo pendente para esta sessão.</div>`;
+              }
+
+              bookHtml += `</div>`;
+            }
           });
 
           bookHtml += `</div>`;

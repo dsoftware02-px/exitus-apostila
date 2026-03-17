@@ -75,6 +75,7 @@ export interface Part {
 export interface Book {
   metadata: BookMetadata;
   parts: Part[];
+  layoutId?: string;
 }
 
 export interface ChatMessage {

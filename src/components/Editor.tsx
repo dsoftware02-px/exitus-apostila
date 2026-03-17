@@ -16,10 +16,11 @@ interface EditorProps {
   chapter: Chapter | null;
   session: Session | null;
   onUpdateSession: (chapterId: string, sessionId: string, updates: Partial<Session>) => void;
+  onUpdateBookLayout: (layoutId: string) => void;
   onDiscussText: (text: string) => void;
 }
 
-export function Editor({ book, chapter, session, onUpdateSession, onDiscussText }: EditorProps) {
+export function Editor({ book, chapter, session, onUpdateSession, onUpdateBookLayout, onDiscussText }: EditorProps) {
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingAsset, setIsGeneratingAsset] = useState(false);
@@ -27,7 +28,7 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
   const [selectedText, setSelectedText] = useState('');
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [viewMode, setViewMode] = useState<ViewMode>('SPLIT');
-  const selectedLayoutId = resolveLayoutId(session?.layoutId);
+  const selectedLayoutId = resolveLayoutId(book.layoutId);
 
   // Auto-suggest approach when a pending session is selected
   useEffect(() => {
@@ -86,8 +87,7 @@ export function Editor({ book, chapter, session, onUpdateSession, onDiscussText 
   };
 
   const handleLayoutChange = (layoutId: string) => {
-    if (!session || !chapter) return;
-    onUpdateSession(chapter.id, session.id, { layoutId: resolveLayoutId(layoutId) });
+    onUpdateBookLayout(resolveLayoutId(layoutId));
   };
 
   // Handle text selection for Highlight & Discuss

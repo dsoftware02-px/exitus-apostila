@@ -1,4 +1,4 @@
-export type LayoutId = 'sem-layout' | 'arco-iris' | 'floresta-aventura' | 'oceano-magico' | 'jardim-encantado' | 'doces-pastel';
+export type LayoutId = 'sem-layout' | '1' | '2';
 
 export interface LayoutOption {
   id: LayoutId;
@@ -31,25 +31,15 @@ export const LAYOUT_OPTIONS: LayoutOption[] = [
     name: 'Sem layout'
   },
   {
-    id: 'arco-iris',
-    name: 'Arco-íris Encantado',
-    file: '/layouts/arco-iris.html'
+    id: '1',
+    name: 'Lúdico',
+    file: '/layouts/1.html'
   },
   {
-    id: 'floresta-aventura',
-    name: 'Floresta Aventura',
-    file: '/layouts/floresta-aventura.html'
+    id: '2',
+    name: 'Acadêmico',
+    file: '/layouts/2.html'
   },
-  {
-    id: 'jardim-encantado',
-    name: 'Jardim Encantado',
-    file: '/layouts/jardim-encantado.html'
-  },
-  {
-    id: 'doces-pastel',
-    name: 'Doces & Pastel',
-    file: '/layouts/doces-pastel.html'
-  }
 ];
 
 export function isLayoutId(value?: string | null): value is LayoutId {

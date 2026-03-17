@@ -1,0 +1,127 @@
+<!-- Layout LÚDICO — Material didático infantil / ensino fundamental -->
+<section style="
+  width: 100%;
+  margin: 0;
+  padding: 7mm;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 40%, #fecaca 100%);
+  font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif;
+  color: #1f2937;
+  break-inside: auto;
+  page-break-inside: auto;
+">
+  <div style="
+    background: #ffffff;
+    border-radius: 16px;
+    border: 3px solid #fb923c;
+    padding: 11mm 11mm 13mm 11mm;
+    box-sizing: border-box;
+    min-height: calc(297mm - 14mm);
+    position: relative;
+  ">
+
+    <!-- ======= Faixa de Título ======= -->
+    <div style="
+      background: linear-gradient(135deg, #f97316 0%, #ef4444 100%);
+      color: #ffffff;
+      padding: 10px 22px;
+      border-radius: 12px;
+      margin-bottom: 5mm;
+      text-align: center;
+    ">
+      <h1 style="
+        margin: 0;
+        font-size: 18pt;
+        font-weight: 700;
+        line-height: 1.3;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.15);
+      ">{{SESSION_TITLE}}</h1>
+    </div>
+
+    <!-- ======= Grid Superior: Introdução + Imagem ======= -->
+    <div style="
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 4mm;
+      margin-bottom: 4mm;
+    ">
+      <!-- Caixa de Introdução -->
+      <div style="
+        background: #fef3c7;
+        border: 2px solid #fbbf24;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-size: 10.5pt;
+        line-height: 1.55;
+      ">
+        <div style="
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 6px;
+        ">
+          <span style="font-size: 14pt;">🌟</span>
+          <span style="
+            color: #b45309;
+            font-size: 10pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          ">Introdução</span>
+        </div>
+        <p style="margin: 0; color: #78350f;">{{INTRO_TEXT}}</p>
+      </div>
+
+      <!-- Imagem Principal -->
+      <div style="
+        border: 3px solid #60a5fa;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #dbeafe;
+        max-height: 55mm;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      ">{{HERO_IMAGE}}</div>
+    </div>
+
+    <!-- ======= Conteúdo Principal ======= -->
+    <div style="
+      background: #ffffff;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 4mm;
+      font-size: 10.8pt;
+      line-height: 1.6;
+    ">{{MAIN_CONTENT}}</div>
+
+    <!-- ======= Barra de Destaques ======= -->
+    <div style="
+      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+      border: 2px solid #34d399;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 10pt;
+      line-height: 1.55;
+    ">
+      <div style="
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 6px;
+      ">
+        <span style="font-size: 14pt;">📌</span>
+        <span style="
+          color: #059669;
+          font-size: 10pt;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        ">Destaques</span>
+      </div>
+      {{SIDEBAR_CONTENT}}
+    </div>
+
+  </div>
+</section>

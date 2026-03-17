@@ -54,7 +54,7 @@ export function BookMap({ book, activeSessionId, onSelectSession, onPreview }: B
                               : 'text-zinc-600 hover:bg-zinc-200/50'
                           }`}
                         >
-                          <span className="mr-2 flex-shrink-0">
+                          <span className="mr-2 shrink-0">
                             {isActive && session.status === 'PENDING' ? (
                               <Circle className="w-4 h-4 text-zinc-400" />
                             ) : (

@@ -1,0 +1,100 @@
+<!-- Layout ACADÊMICO — Material didático formal / ensino médio e superior -->
+<section style="
+  width: 100%;
+  margin: 0;
+  padding: 7mm;
+  box-sizing: border-box;
+  background: #f1f5f9;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  color: #1e293b;
+  break-inside: auto;
+  page-break-inside: auto;
+">
+  <div style="
+    background: #ffffff;
+    border: 1px solid #94a3b8;
+    border-top: 5px solid #1e293b;
+    padding: 11mm 11mm 13mm 11mm;
+    box-sizing: border-box;
+    min-height: calc(297mm - 14mm);
+  ">
+
+    <!-- ======= Título ======= -->
+    <div style="
+      border-bottom: 2px solid #1e293b;
+      padding-bottom: 8px;
+      margin-bottom: 5mm;
+    ">
+      <h1 style="
+        margin: 0;
+        font-size: 20pt;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.3;
+        letter-spacing: -0.3px;
+      ">{{SESSION_TITLE}}</h1>
+    </div>
+
+    <!-- ======= Introdução + Imagem ======= -->
+    <div style="
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5mm;
+      margin-bottom: 5mm;
+      align-items: start;
+    ">
+      <!-- Citação Introdutória -->
+      <div style="
+        border-left: 4px solid #3b82f6;
+        padding: 10px 14px;
+        background: #f8fafc;
+        font-size: 10.5pt;
+        line-height: 1.6;
+        font-style: italic;
+        color: #334155;
+      ">
+        <p style="margin: 0;">{{INTRO_TEXT}}</p>
+      </div>
+
+      <!-- Imagem Principal -->
+      <div style="
+        border: 1px solid #cbd5e1;
+        overflow: hidden;
+        background: #f1f5f9;
+        max-height: 55mm;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      ">{{HERO_IMAGE}}</div>
+    </div>
+
+    <!-- ======= Conteúdo Principal ======= -->
+    <div style="
+      font-size: 11pt;
+      line-height: 1.7;
+      text-align: justify;
+      margin-bottom: 5mm;
+    ">{{MAIN_CONTENT}}</div>
+
+    <!-- ======= Notas e Observações ======= -->
+    <div style="
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-left: 4px solid #6366f1;
+      padding: 10px 14px;
+      font-size: 10pt;
+      line-height: 1.55;
+    ">
+      <div style="
+        font-size: 9pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #4f46e5;
+        margin-bottom: 6px;
+      ">Notas &amp; Observações</div>
+      {{SIDEBAR_CONTENT}}
+    </div>
+
+  </div>
+</section>

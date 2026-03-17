@@ -195,6 +195,7 @@ export default function App() {
             chapter={getActiveChapter()}
             session={getActiveSession()}
             onUpdateSession={handleUpdateSession}
+            onUpdateBookLayout={(layoutId) => setBook(prev => ({ ...prev, layoutId }))}
             onDiscussText={(text) => {
               setAssistantContext(text);
               if (!isRightPanelOpen) setIsRightPanelOpen(true);
