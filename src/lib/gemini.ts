@@ -15,9 +15,43 @@ function getAI() {
   return aiClient;
 }
 
+async function getSummarizedContext(text: string | undefined, objectiveContext: string): Promise<string> {
+  if (!text) return '';
+  if (text.length < 20000) return text;
+  
+  const ai = getAI();
+  let safeText = text;
+  if (text.length > 100000) {
+     safeText = text.substring(0, 50000) + "\n\n...[TRECHO EXCLUÍDO POR LIMITE DE ESPAÇO]...\n\n" + text.substring(text.length - 50000);
+  }
+  
+  const prompt = `
+    Abaixo há um documento de referência muito longo.
+    
+    TEXTO ORIGINAL:
+    ${safeText}
+    
+    Por favor, faça um resumo focando EXCLUSIVAMENTE nos contextos e tópicos mais relevantes sobre: "${objectiveContext}".
+    Preserve conceitos importantes, diretrizes e informações cruciais.
+  `;
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+    });
+    return response.text || safeText.substring(0, 15000);
+  } catch (e) {
+    console.error('Failed to summarize long text:', e);
+    return safeText.substring(0, 15000) + '... (texto truncado por erro ao resumir)';
+  }
+}
+
 export async function generateMacroStructure(metadata: BookMetadata): Promise<Part[]> {
   const ai = getAI();
   
+  const summarizedPac = await getSummarizedContext(metadata.pacContent, `Estrutura macro do livro, índice e ementa para a disciplina de ${metadata.discipline.subject}`);
+
   const prompt = `
     Atue como um Engenheiro Pedagógico Especialista com formação em Ivy League.
     Crie uma estrutura de livro didático (Índice / Espinha de Peixe) com base nas Quatro Causas Pedagógicas:
@@ -52,8 +86,19 @@ export async function generateMacroStructure(metadata: BookMetadata): Promise<Pa
     - Estilo de Imagens: ${metadata.visual.imageStyle}
     - Layout das Páginas: ${metadata.visual.layoutStyle}
 
-    A estrutura deve conter Partes, Capítulos e Sessões.
+    ${summarizedPac ? `[PLANO ANUAL DO CURSO (PAC)]\nConsidere o seguinte Plano Anual do Curso fornecido como base obrigatória para a estrutura e tópicos abordados:\n${summarizedPac}\n\n[MUITO IMPORTANTE - ORDEM E PROGRESSÃO]: A estrutura gerada DEVE seguir ESTRITAMENTE a ordem cronológica, temas e progressão apresentados no PAC. Não inverta a ordem dos conteúdos.` : ''}
+
+    [MUITO IMPORTANTE - TAGS DE APRENDIZADO]: Para cada sessão criada, identifique quais objetivos de aprendizado da lista DE ENTRADA ("${metadata.discipline.learningObjectives}") são tratados.
+    REGRAS ESTRITAS PARA TAGS:
+    1. Se os objetivos de entrada contiverem códigos BNCC (ex: (EF05CO01)), as tags para essas competências DEVEM ser APENAS o código (ex: "EF05CO01"). REMOVA toda e qualquer descrição textual.
+    2. Se a entrada consistir exclusivamente de competências codificadas, as tags DEVEM ser exclusivamente os códigos.
+    3. Para objetivos puramente textuais (sem código), use fragmentos literais e curtíssimos do texto original, garantindo assimilação direta sem resumos interpretativos.
+    Extraia esses tópicos para o array 'pacObjectives'.
+
+    A estrutura deve conter Partes, Capítulos e Sessões. Exige-se que os títulos e objetivos sejam ALTAMENTE EXAUSTIVOS, DETALHADOS E RICOS EM CONTEÚDO, englobando sub-tópicos e detalhando o que será abordado (não seja genérico).
     Para cada Sessão, defina um título e um objetivo claro que respeite o Rigor e a Maturidade Cognitiva definidos.
+    
+    ${metadata.visual.exercisePlacement === 'CAPITULO' ? `[MUITO IMPORTANTE - EXERCÍCIOS MACRO]: O professor escolheu a frequência de exercícios como 'Por Capítulo'. Portanto, você DEVE CRIAR OBRIGATORIAMENTE uma última sessão em TODO Capítulo chamada EXATAMENTE "Exercícios". O objetivo dessa sessão deve ser: "Resolução de exercícios que abrangem todo o conteúdo deste capítulo".` : ''}
   `;
 
   const response = await ai.models.generateContent({
@@ -84,7 +129,12 @@ export async function generateMacroStructure(metadata: BookMetadata): Promise<Pa
                       properties: {
                         id: { type: Type.STRING },
                         title: { type: Type.STRING },
-                        objective: { type: Type.STRING }
+                        objective: { type: Type.STRING },
+                        pacObjectives: { 
+                          type: Type.ARRAY, 
+                          items: { type: Type.STRING },
+                          description: 'Objetivos de aprendizagem do PAC que são cobertos nesta sessão'
+                        }
                       },
                       required: ['id', 'title', 'objective']
                     }
@@ -114,7 +164,9 @@ export async function generateMacroStructure(metadata: BookMetadata): Promise<Pa
           content: '',
           summary: '',
           approach: '',
-          anchors: ''
+          anchors: '',
+          entities: [],
+          pacObjectives: s.pacObjectives || []
         }))
       }))
     }));
@@ -127,6 +179,8 @@ export async function generateMacroStructure(metadata: BookMetadata): Promise<Pa
 export async function refineMacroStructure(currentParts: Part[], metadata: BookMetadata, userPrompt: string): Promise<Part[]> {
   const ai = getAI();
   
+  const summarizedPac = await getSummarizedContext(metadata.pacContent, `Adaptações ou análise de estrutura para o índice do livro focando na instrução: ${userPrompt}`);
+
   const prompt = `
     Atue como um Engenheiro Pedagógico Especialista.
     Aqui está a estrutura atual do livro didático (em JSON):
@@ -139,10 +193,21 @@ export async function refineMacroStructure(currentParts: Part[], metadata: BookM
     [CAUSA EFICIENTE] Tom: ${metadata.style.authorTone}, Linguagem: ${metadata.style.languageComplexity}
     [ESTÉTICA] Visual: ${metadata.visual.visualTone}, Imagens: ${metadata.visual.imageStyle}, Exercícios: ${metadata.visual.exercisePlacement}
 
+    ${summarizedPac ? `[PLANO ANUAL DO CURSO (PAC) - RESUMO]\nConsidere o seguinte PAC fornecido como base obrigatória:\n${summarizedPac}\n\n[MUITO IMPORTANTE - ORDEM E PROGRESSÃO]: A estrutura DEVE continuar seguindo ESTRITAMENTE a ordem e progressão ditadas pelo PAC.` : ''}
+
+    [MUITO IMPORTANTE - TAGS DE APRENDIZADO]: Para cada sessão criada/atualizada, identifique quais objetivos de aprendizado da lista DE ENTRADA ("${metadata.discipline.learningObjectives}") são tratados.
+    REGRAS ESTRITAS PARA TAGS:
+    1. Se os objetivos de entrada contiverem códigos BNCC (ex: (EF05CO01)), as tags para essas competências DEVEM ser APENAS o código (ex: "EF05CO01"). REMOVA toda e qualquer descrição textual.
+    2. Se a entrada consistir exclusivamente de competências codificadas, as tags DEVEM ser exclusivamente os códigos.
+    3. Para objetivos puramente textuais (sem código), use fragmentos literais e curtíssimos do texto original, garantindo assimilação direta sem resumos interpretativos.
+    Extraia esses tópicos para o array 'pacObjectives'.
+
     O professor solicitou a seguinte alteração no índice: "${userPrompt}"
 
     Retorne a estrutura completa atualizada em JSON. Mantenha os IDs existentes para os itens que não foram removidos.
-    A estrutura deve conter Partes, Capítulos e Sessões. Para cada Sessão, defina um título e um objetivo claro.
+    A estrutura deve conter Partes, Capítulos e Sessões. Exige-se que os objetivos e sub-tópicos sejam MUITO DETALHADOS e densos, usando amplamente o PAC.
+    
+    ${metadata.visual.exercisePlacement === 'CAPITULO' ? `[MUITO IMPORTANTE - EXERCÍCIOS MACRO]: Nunca remova a sessão final "Exercícios" dos capítulos, a menos que o professor explicitamente peça. Todo capítulo deve terminar com a sessão "Exercícios".` : ''}
   `;
 
   const response = await ai.models.generateContent({
@@ -173,7 +238,11 @@ export async function refineMacroStructure(currentParts: Part[], metadata: BookM
                       properties: {
                         id: { type: Type.STRING },
                         title: { type: Type.STRING },
-                        objective: { type: Type.STRING }
+                        objective: { type: Type.STRING },
+                        pacObjectives: { 
+                          type: Type.ARRAY, 
+                          items: { type: Type.STRING }
+                        }
                       },
                       required: ['id', 'title', 'objective']
                     }
@@ -214,6 +283,8 @@ export async function refineMacroStructure(currentParts: Part[], metadata: BookM
                 summary: '',
                 approach: '',
                 anchors: '',
+                entities: [],
+                pacObjectives: s.pacObjectives || [],
                 ...existingSession,
                 ...s,
               };
@@ -310,34 +381,64 @@ export async function suggestApproach(objective: string, previousContent?: strin
   return response.text || '';
 }
 
-export async function generateSessionContent(payload: SlidingWindowPayload): Promise<{ content: string, summary: string }> {
+export async function generateSessionContent(payload: SlidingWindowPayload): Promise<{ content: string, summary: string, entities: string[] }> {
   const ai = getAI();
   
+  const summarizedPac = await getSummarizedContext(
+    payload.metadata.pacContent, 
+    `Ensino do tópico: '${payload.currentObjective}' no capítulo '${payload.chapterObjective}'`
+  );
+  
+  let prevSum = payload.previousSummaries || 'Nenhum contexto anterior.';
+  if (prevSum.length > 15000) prevSum = '... ' + prevSum.substring(prevSum.length - 15000);
+  
+  let lastPars = payload.lastParagraphs || 'Início do capítulo.';
+  if (lastPars.length > 5000) lastPars = '... ' + lastPars.substring(lastPars.length - 5000);
+
   const prompt = `
-    Você é um co-piloto de autoria de livros didáticos. Escreva o conteúdo para a sessão atual.
-    
-    [CONTEXTO MACRO]
-    Objetivo do Capítulo: ${payload.chapterObjective}
-    
-    [CONTEXTO ANTERIOR (Resumo)]
-    ${payload.previousSummaries || 'Nenhum contexto anterior.'}
-    
-    [GANCHO DE TRANSIÇÃO (Últimos parágrafos da sessão anterior)]
-    ${payload.lastParagraphs || 'Início do capítulo.'}
-    
-    [DIRETRIZES PARA ESTA SESSÃO]
-    Objetivo: ${payload.currentObjective}
-    Abordagem Pedagógica: ${payload.pedagogicalApproach}
-    Conhecimento Âncora (Tópicos/Anotações do Professor): ${payload.anchors}
-    
-    [ESTILO VISUAL ESPERADO]
-    Tom Visual: ${payload.metadata.visual.visualTone}
-    Densidade de Imagens: ${payload.metadata.visual.imageDensity}
-    Estilo de Imagens: ${payload.metadata.visual.imageStyle}
-    
-    Escreva o texto didático de forma clara, engajadora e alinhada à abordagem sugerida.
-    Se necessário, insira placeholders como <img_req desc="descrição da imagem"> ou <q_req desc="descrição do exercício">.
-    Retorne um JSON com o 'content' (o texto gerado em Markdown) e um 'summary' (um resumo de 2 frases do que foi abordado, para ser usado no contexto das próximas sessões).
+Você é um co-piloto e autor especialista em materiais didáticos de altíssima qualidade.
+Sua missão é escrever o conteúdo da sessão atual garantindo que ele seja engajador, pedagogicamente correto e EXATAMENTE ajustado para o público-alvo definido.
+
+[PÚBLICO-ALVO E TOM DE VOZ - DIRETRIZ ESTRITA]
+Público-alvo: ${payload.metadata.course.targetAudience} (Série: ${payload.metadata.discipline.grade})
+Tom e Complexidade: ${payload.metadata.style.authorTone} (${payload.metadata.style.languageComplexity})
+Maturidade Cognitiva: ${payload.metadata.course.cognitiveMaturity}
+Regra de Vocabulário: Ajuste a sintaxe, o tamanho das frases e a complexidade das palavras para que sejam perfeitamente compreensíveis pelo público-alvo acima. Use analogias adequadas a esta faixa etária.
+
+[CONTEXTO MACRO]
+Objetivo do Capítulo: ${payload.chapterObjective}
+
+[SESSÕES ANTERIORES - ESTADO E CONEXÃO]
+Abaixo está o resumo JSON das sessões já cobertas e os conceitos-chave (entities) introduzidos.
+${prevSum}
+
+Regra de Continuidade: Seu texto deve avançar no conteúdo. Como estamos escrevendo para o ${payload.metadata.course.targetAudience} (${payload.metadata.discipline.grade}), você pode fazer breves recapitulações (pontes didáticas) desses conceitos se ajudar na compreensão do novo assunto, mas NUNCA repita blocos inteiros de texto ou crie seções redundantes. Avance o aprendizado de forma fluida.
+
+[GANCHO DE TRANSIÇÃO (Últimos parágrafos da sessão anterior)]
+${lastPars}
+
+[DIRETRIZES PARA ESTA SESSÃO]
+Objetivo Específico: ${payload.currentObjective}
+Abordagem Pedagógica: ${payload.pedagogicalApproach}
+Conhecimento Âncora (Anotações do Professor): ${payload.anchors}
+
+[ESTILO VISUAL ESPERADO]
+Tom Visual: ${payload.metadata.visual.visualTone}
+Densidade de Imagens: ${payload.metadata.visual.imageDensity}
+Estilo de Imagens: ${payload.metadata.visual.imageStyle}
+
+${summarizedPac ? `[PLANO ANUAL DO CURSO (PAC) - RESUMO]\nCertifique-se de que o conteúdo desenvolva os tópicos do PAC relacionados a esta sessão:\n${summarizedPac}\n` : ''}
+
+[INSTRUÇÕES DE SAÍDA]
+Escreva o texto didático em Markdown de forma clara, impecável, alinhada à abordagem sugerida e absolutamente sem inserir emojis.
+Se necessário, insira placeholders de media como <img_req desc="descrição da imagem">.
+
+${payload.metadata.visual.exercisePlacement === 'SESSAO' ? `[EXERCÍCIOS DE SESSÃO]: OBRIGATORIAMENTE ao final do markdown retornado, adicione uma sub-seção (### Fixação) contendo uma tag de exercício prático sugerido e adequado à faixa etária, no modelo: \`<q_req desc="Questão de [tipo de questão] sobre {foco prático do que foi ensinado}">\`.` : ''}
+
+Retorne um objeto JSON estrito contendo:
+- 'content': O texto didático completo em Markdown.
+- 'summary': Um resumo conciso (2 frases) do que foi abordado nesta sessão específica.
+- 'entities': Um array de strings com as entidades/conceitos PRINCIPAIS abordados APENAS nesta sessão (ex: ["Fotossíntese", "Clorofila"]).
   `;
 
   const response = await ai.models.generateContent({
@@ -348,18 +449,23 @@ export async function generateSessionContent(payload: SlidingWindowPayload): Pro
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          content: { type: Type.STRING, description: 'Texto didático em Markdown' },
-          summary: { type: Type.STRING, description: 'Resumo curto da sessão' }
+          content: { type: Type.STRING, description: 'Texto didático estruturado e profundo em Markdown' },
+          summary: { type: Type.STRING, description: 'Resumo curto da sessão' },
+          entities: { 
+            type: Type.ARRAY, 
+            items: { type: Type.STRING },
+            description: 'Lista de conceitos-chave ensinados nesta sessão' 
+          }
         },
-        required: ['content', 'summary']
+        required: ['content', 'summary', 'entities']
       }
     }
   });
 
   try {
-    return JSON.parse(response.text || '{"content": "", "summary": ""}');
+    return JSON.parse(response.text || '{"content": "", "summary": "", "entities": []}');
   } catch (e) {
-    return { content: response.text || '', summary: '' };
+    return { content: response.text || '', summary: '', entities: [] };
   }
 }
 
@@ -403,6 +509,144 @@ export async function chatWithAssistant(messages: {role: string, content: string
   return response.text || '';
 }
 
+
+/** Fast cheap agent: returns true when ALL objectives are BNCC-coded lines */
+async function detectOnlyBncc(learningObjectives: string): Promise<boolean> {
+  const ai = getAI();
+  const prompt = `
+    Analyze the following text. The text is a list of learning objectives.
+    Your ONLY job is to determine whether EVERY objective line is a BNCC competency code (e.g. EF05CO01, EM13MAT01) optionally followed by its description.
+    If ALL lines follow the pattern "<code> <optional description>" where the code starts with letters followed by digits, answer true.
+    If there is at least one line that is a free-text objective with NO associated code, answer false.
+
+    Text to analyze:
+    """
+    ${learningObjectives}
+    """
+
+    Respond ONLY with a JSON object: { "onlyBncc": true } or { "onlyBncc": false }
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+    const result = JSON.parse(response.text || '{"onlyBncc": false}');
+    return result.onlyBncc === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Deterministically extract BNCC codes from the objectives text using a regex */
+function extractBnccCodes(learningObjectives: string): string[] {
+  const bnccRegex = /\b([A-Z]{2}\d{2}[A-Z]{2}\d{2,})\b/g;
+  const codes: string[] = [];
+  let match;
+  while ((match = bnccRegex.exec(learningObjectives)) !== null) {
+    if (!codes.includes(match[1])) {
+      codes.push(match[1]);
+    }
+  }
+  return codes;
+}
+
+/** Map each session id to the BNCC codes relevant to it by asking the AI to match */
+async function mapBnccCodesToSessions(
+  codes: string[],
+  parts: Part[]
+): Promise<Record<string, string[]>> {
+  const ai = getAI();
+  const sessions = parts.flatMap(p =>
+    p.chapters.flatMap(c =>
+      c.sessions.map(s => ({ id: s.id, title: s.title, objective: s.objective }))
+    )
+  );
+
+  const prompt = `
+    You have a list of BNCC competency codes: ${JSON.stringify(codes)}
+    And a list of book sessions (id, title, objective): ${JSON.stringify(sessions)}
+
+    For each session, determine which BNCC codes are related to its content.
+    Return ONLY a JSON object where keys are session IDs and values are arrays of BNCC code strings.
+    Example: { "uuid-123": ["EF05CO01", "EF05CO03"] }
+    If a session doesn't match any code, use an empty array.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+    return JSON.parse(response.text || '{}');
+  } catch {
+    return {};
+  }
+}
+
+export async function assignSectionTags(metadata: BookMetadata, parts: Part[]): Promise<Part[]> {
+  const ai = getAI();
+
+  // Stage 1: Detect if objectives are purely BNCC codes
+  const onlyBncc = await detectOnlyBncc(metadata.discipline.learningObjectives);
+
+  let tagsMap: Record<string, string[]>;
+
+  if (onlyBncc) {
+    // Stage 2a: Extract BNCC codes deterministically and map to sessions
+    const codes = extractBnccCodes(metadata.discipline.learningObjectives);
+    tagsMap = await mapBnccCodesToSessions(codes, parts);
+  } else {
+    // Stage 2b: Use AI to generate tags from free-text objectives
+    const prompt = `
+      Atue como um Especialista em Taxonomia Educacional.
+      Seu objetivo é extrair tags concisas para cada sessão, baseando-se nos Objetivos de Aprendizado fornecidos.
+
+      [OBJETIVOS DE APRENDIZADO]
+      ${metadata.discipline.learningObjectives}
+
+      [ESTRUTURA DO LIVRO]
+      ${JSON.stringify(parts.map(p => ({
+        title: p.title,
+        chapters: p.chapters.map(c => ({
+          title: c.title,
+          sessions: c.sessions.map(s => ({ id: s.id, title: s.title, objective: s.objective }))
+        }))
+      })))}
+
+      [REGRA]: As tags devem ser fragmentos RECONHECÍVEIS e LITERAIS do texto de objetivos. Não invente categorias.
+      Retorne um objeto JSON onde as chaves são os IDs das sessões e os valores são arrays de strings (as tags, máximo 3).
+      Exemplo: { "uuid-123": ["Reconhecer objetos representados por listas", "Manipulações simples sobre sequências"] }
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+
+    try {
+      tagsMap = JSON.parse(response.text || '{}');
+    } catch {
+      tagsMap = {};
+    }
+  }
+
+  return parts.map(part => ({
+    ...part,
+    chapters: part.chapters.map(chapter => ({
+      ...chapter,
+      sessions: chapter.sessions.map(session => ({
+        ...session,
+        pacObjectives: tagsMap[session.id] || session.pacObjectives || []
+      }))
+    }))
+  }));
+}
+
 export async function generateQuestion(context: string, difficulty: string): Promise<string> {
   const ai = getAI();
   const prompt = `
@@ -424,6 +668,7 @@ export async function generateQuestion(context: string, difficulty: string): Pro
 
   return response.text || '';
 }
+
 
 export async function generateImage(context: string): Promise<string> {
   const ai = getAI();

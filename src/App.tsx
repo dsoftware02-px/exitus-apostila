@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import localforage from 'localforage';
 import { AppState, Book, BookMetadata, Session, Chapter } from './types';
 import { SetupForm } from './components/SetupForm';
 import { MacroPlanner } from './components/MacroPlanner';
@@ -6,7 +7,7 @@ import { BookMap } from './components/BookMap';
 import { Editor } from './components/Editor';
 import { Assistant } from './components/Assistant';
 import { BookPreview } from './components/BookPreview';
-import { RotateCcw, Sparkles, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { RotateCcw, Sparkles, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Loader2 } from 'lucide-react';
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>(() => {
@@ -17,18 +18,15 @@ export default function App() {
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   
-  const [book, setBook] = useState<Book>(() => {
-    const saved = localStorage.getItem('edtech_book');
-    return saved ? JSON.parse(saved) : {
-      metadata: { 
-        institutional: { schoolName: '', pedagogicalEthos: '', pppContext: '', regionality: '' },
-        course: { targetAudience: '', cognitiveMaturity: '', rigorLevel: 'INTERMEDIARIO', courseGoal: '' },
-        discipline: { subject: '', grade: '', learningObjectives: '', methodology: 'EXPOSITIVA', evaluationArchitecture: '', interdisciplinaryHooks: '' },
-        style: { authorTone: '', languageComplexity: '', structureLevel1: 'Unidade', structureLevel2: 'Capítulo' },
-        visual: { exercisePlacement: 'SESSAO', visualTone: 'SOBRIO', imageDensity: 'MEDIA', imageStyle: '', layoutStyle: '' }
-      },
-      parts: []
-    };
+  const [book, setBook] = useState<Book>({
+    metadata: { 
+      institutional: { schoolName: '', pedagogicalEthos: '', pppContext: '', regionality: '' },
+      course: { targetAudience: '', cognitiveMaturity: '', rigorLevel: 'INTERMEDIARIO', courseGoal: '' },
+      discipline: { subject: '', grade: '', learningObjectives: '', methodology: 'EXPOSITIVA', evaluationArchitecture: '', interdisciplinaryHooks: '' },
+      style: { authorTone: '', languageComplexity: '', structureLevel1: 'Unidade', structureLevel2: 'Capítulo' },
+      visual: { exercisePlacement: 'SESSAO', visualTone: 'SOBRIO', imageDensity: 'MEDIA', imageStyle: '', layoutStyle: '' }
+    },
+    parts: []
   });
   
   const [activeChapterId, setActiveChapterId] = useState<string | null>(() => localStorage.getItem('edtech_activeChapterId'));
@@ -36,6 +34,28 @@ export default function App() {
   const [assistantContext, setAssistantContext] = useState<string | null>(null);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [resetKey, setResetKey] = useState(0);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [lastGeneratedMetadata, setLastGeneratedMetadata] = useState<BookMetadata | null>(() => {
+    const saved = localStorage.getItem('edtech_lastGeneratedMetadata');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  // Initial Load from localforage
+  useEffect(() => {
+    const loadSavedData = async () => {
+      try {
+        const savedBook = await localforage.getItem<Book>('edtech_book');
+        if (savedBook) {
+          setBook(savedBook);
+        }
+      } catch (err) {
+        console.error('Failed to load book from IndexedDB:', err);
+      } finally {
+        setIsDataLoaded(true);
+      }
+    };
+    loadSavedData();
+  }, []);
 
   // Auto-save
   useEffect(() => {
@@ -43,8 +63,16 @@ export default function App() {
   }, [appState]);
 
   useEffect(() => {
-    localStorage.setItem('edtech_book', JSON.stringify(book));
-  }, [book]);
+    if (lastGeneratedMetadata) {
+      localStorage.setItem('edtech_lastGeneratedMetadata', JSON.stringify(lastGeneratedMetadata));
+    }
+  }, [lastGeneratedMetadata]);
+
+  useEffect(() => {
+    if (isDataLoaded) {
+      localforage.setItem('edtech_book', book);
+    }
+  }, [book, isDataLoaded]);
 
   useEffect(() => {
     if (activeChapterId) localStorage.setItem('edtech_activeChapterId', activeChapterId);
@@ -62,6 +90,7 @@ export default function App() {
 
   const confirmReset = () => {
     localStorage.clear();
+    localforage.clear();
     setAppState('SETUP');
     setBook({
       metadata: { 
@@ -81,7 +110,17 @@ export default function App() {
   };
 
   const handleSetupSubmit = (metadata: BookMetadata) => {
-    setBook({ ...book, metadata });
+    // Check if metadata changed
+    const metadataChanged = JSON.stringify(metadata) !== JSON.stringify(lastGeneratedMetadata);
+    
+    if (metadataChanged) {
+      // If metadata changed, we force a new macro planning state by clearing current parts
+      setBook({ ...book, metadata, parts: [] });
+      setLastGeneratedMetadata(metadata);
+    } else {
+      setBook({ ...book, metadata });
+    }
+    
     setAppState('MACRO_PLANNING');
   };
 
@@ -130,7 +169,7 @@ export default function App() {
 
   const renderContent = () => {
     if (appState === 'SETUP') {
-      return <SetupForm key={resetKey} onSubmit={handleSetupSubmit} />;
+      return <SetupForm key={resetKey} initialData={book.metadata} onSubmit={handleSetupSubmit} />;
     }
 
     if (appState === 'MACRO_PLANNING') {
@@ -138,7 +177,8 @@ export default function App() {
         <MacroPlanner 
           book={book} 
           onUpdateBook={setBook} 
-          onApprove={handleMacroApprove} 
+          onApprove={handleMacroApprove}
+          onBack={() => setAppState('SETUP')}
         />
       );
     }
@@ -195,6 +235,13 @@ export default function App() {
             chapter={getActiveChapter()}
             session={getActiveSession()}
             onUpdateSession={handleUpdateSession}
+            onUpdateBook={setBook}
+            onBackToMacro={() => setAppState('MACRO_PLANNING')}
+            activeChapterId={activeChapterId}
+            onSelectSession={(chapterId, sessionId) => {
+              setActiveChapterId(chapterId);
+              setActiveSessionId(sessionId);
+            }}
             onDiscussText={(text) => {
               setAssistantContext(text);
               if (!isRightPanelOpen) setIsRightPanelOpen(true);
@@ -222,25 +269,34 @@ export default function App() {
 
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden bg-zinc-100">
-      {/* Global Header */}
-      <header className="h-14 bg-zinc-900 text-white flex items-center justify-between px-6 shrink-0 z-50 border-b border-zinc-800">
-        <div className="flex items-center font-semibold text-lg tracking-tight">
-          <Sparkles className="w-5 h-5 mr-2 text-blue-400" />
-          EduCopilot
+      {!isDataLoaded ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <Loader2 className="w-12 h-12 text-zinc-400 animate-spin" />
+          <p className="text-zinc-500 font-medium">Carregando dados...</p>
         </div>
-        <button
-          onClick={handleReset}
-          className="text-sm flex items-center text-zinc-300 hover:text-white bg-zinc-800 hover:bg-red-600 px-4 py-2 rounded-lg transition-colors font-medium"
-        >
-          <RotateCcw className="w-4 h-4 mr-2" />
-          Novo Projeto
-        </button>
-      </header>
-      
-      {/* Main Content */}
-      <div className="flex-1 overflow-hidden relative">
-         {renderContent()}
-      </div>
+      ) : (
+        <>
+          {/* Global Header */}
+          <header className="h-14 bg-zinc-900 text-white flex items-center justify-between px-6 shrink-0 z-50 border-b border-zinc-800">
+            <div className="flex items-center font-semibold text-lg tracking-tight">
+              <Sparkles className="w-5 h-5 mr-2 text-blue-400" />
+              EduCopilot
+            </div>
+            <button
+              onClick={handleReset}
+              className="text-sm flex items-center text-zinc-300 hover:text-white bg-zinc-800 hover:bg-red-600 px-4 py-2 rounded-lg transition-colors font-medium"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Novo Projeto
+            </button>
+          </header>
+          
+          {/* Main Content */}
+          <div className="flex-1 overflow-hidden relative">
+             {renderContent()}
+          </div>
+        </>
+      )}
 
       {/* Reset Confirmation Modal */}
       {isResetModalOpen && (
