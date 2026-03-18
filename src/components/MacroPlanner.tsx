@@ -384,7 +384,7 @@ export function MacroPlanner({ book, onUpdateBook, onApprove, onBack }: MacroPla
           </div>
           <h2 className="text-2xl font-semibold text-zinc-900 mb-2">Estrutura Macro</h2>
           <p className="text-zinc-500 mb-8">
-            O EduCopilot irá gerar uma proposta de índice baseada na disciplina de {book.metadata.discipline.subject} para o {book.metadata.discipline.grade}.
+            O ExitusMaterial irá gerar uma proposta de índice baseada na disciplina de {book.metadata.discipline.subject} para o {book.metadata.discipline.grade}.
           </p>
           <button
             onClick={handleGenerate}
